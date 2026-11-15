@@ -59,7 +59,17 @@ export const getAudioBlob = async (id: string): Promise<Blob | undefined> => {
   });
 };
 
-export const deleteAudioBlob = async (id: string): Promise<void> => {
+// Clears the store instead of deleteDatabase, which gets blocked by the connections openDB leaves open
+export const clearAllAudioBlobs = async (): Promise<void> => {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const request = db.transaction(STORE_NAME, 'readwrite').objectStore(STORE_NAME).clear();
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(request.error);
+  });
+};
+
+export const deleteAudioBlob =async (id: string): Promise<void> => {
   const db = await openDB();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE_NAME, 'readwrite');

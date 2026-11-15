@@ -2,9 +2,9 @@
 export default {
   content: [
     "./index.html",
-    "./*.{js,ts,jsx,tsx}",       // <--- ADDS SUPPORT FOR ROOT FILES
-    "./src/**/*.{js,ts,jsx,tsx}", // <--- Adds support for src folder
-    "./electron/**/*.{js,ts,jsx,tsx}"
+    "./*.{js,ts,jsx,tsx}",
+    "./components/**/*.{js,ts,jsx,tsx}",
+    "./services/**/*.{js,ts,jsx,tsx}"
   ],
   darkMode: 'class',
   theme: {
@@ -12,15 +12,21 @@ export default {
       colors: {
         background: 'var(--bg-app)',
         surface: 'var(--bg-surface)',
+        'surface-highlight': 'var(--bg-panel)',
         primary: 'var(--col-primary)',
         'primary-hover': 'var(--col-primary-hover)',
         secondary: 'var(--col-secondary)',
         danger: 'var(--col-danger)',
         text: 'var(--text-main)',
         'text-muted': 'var(--text-muted)',
+        border: 'var(--border-color)',
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
+        mono: ['JetBrains Mono', 'Menlo', 'monospace'],
+      },
+      animation: {
+        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
       }
     },
   },

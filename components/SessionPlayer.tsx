@@ -8,10 +8,11 @@ interface SessionPlayerProps {
   routine: Routine;
   onComplete: () => void;
   onStop: () => void;
+  onPauseChange?: (paused: boolean) => void;
   beepVolume: number;
 }
 
-export const SessionPlayer: React.FC<SessionPlayerProps> = ({ routine, onComplete, onStop, beepVolume }) => {
+export const SessionPlayer: React.FC<SessionPlayerProps> = ({ routine, onComplete, onStop, onPauseChange, beepVolume }) => {
   const [currentBlockIndex, setCurrentBlockIndex] = useState(0);
   const [timeLeft, setTimeLeft] = useState(routine.blocks[0]?.duration || 60);
   const [elapsedInBlock, setElapsedInBlock] = useState(0);
@@ -35,6 +36,10 @@ export const SessionPlayer: React.FC<SessionPlayerProps> = ({ routine, onComplet
     setCurrentPromptIndex(0);
     setElapsedInBlock(0);
   }, [currentBlockIndex]);
+
+  useEffect(() => {
+    onPauseChange?.(isPaused);
+  }, [isPaused]);
 
   useEffect(() => {
     // Handle Timed & Infinite Blocks

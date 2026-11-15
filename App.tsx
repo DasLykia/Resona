@@ -36,10 +36,11 @@ import {
   XP_PER_MINUTE, XP_PER_SESSION, XP_LEVEL_BASE, THEMES, DEFAULT_ROUTINE
 } from './constants';
 import { 
-  loadFromStorage, saveToStorage, saveAudioBlob, deleteAudioBlob 
+  loadFromStorage, saveToStorage, saveAudioBlob, deleteAudioBlob, clearAllAudioBlobs
 } from './services/storage';
 import { audioService, AudioService } from './services/audio';
 import { calculateStreaks } from './services/stats';
+import { version } from './package.json';
 
 // --- THEME ENGINE ---
 const GlobalStyles = ({ theme, mode, customColors }: { theme: ColorTheme, mode: 'light' | 'dark', customColors?: { primary: string; secondary: string } }) => {
@@ -559,7 +560,7 @@ const App: React.FC = () => {
   const [recordings, setRecordings] = useState<Recording[]>(() => loadFromStorage(STORAGE_KEYS.RECORDINGS, []));
   const [sessions, setSessions] = useState<TrainingSession[]>(() => loadFromStorage(STORAGE_KEYS.SESSIONS, []));
   const [goals, setGoals] = useState<Goal[]>(() => loadFromStorage(STORAGE_KEYS.GOALS, []));
-  const [appVersion, setAppVersion] = useState('1.0.5');
+  const [appVersion, setAppVersion] = useState(version);
 
   // Update State
   const [updateAvailable, setUpdateAvailable] = useState<UpdateInfo | null>(null);
@@ -578,9 +579,13 @@ const App: React.FC = () => {
   const [highlightedRecordingId, setHighlightedRecordingId] = useState<string | null>(null);
 
   // Session State
-  const [sessionDuration, setSessionDuration] = useState(0); 
-  const timerRef = useRef<number | null>(null); 
+  const [sessionDuration, setSessionDuration] = useState(0);
   const startTimeRef = useRef<number>(0);
+  const endTimeRef = useRef<number>(0);
+  // Refs (not state) so the 50ms pitch interval sees the live value
+  const pausedRef = useRef(false);
+  const pauseStartRef = useRef(0);
+  const pausedTotalRef = useRef(0);
   const pitchDataRef = useRef<PitchDataPoint[]>([]);
   const pitchIntervalRef = useRef<number | null>(null);
   const [livePitchData, setLivePitchData] = useState<PitchDataPoint[]>([]);
@@ -687,33 +692,27 @@ const App: React.FC = () => {
         await audioService.resume(); 
         
         startTimeRef.current = Date.now();
+        pausedRef.current = false;
+        pausedTotalRef.current = 0;
         pitchDataRef.current = [];
         setLivePitchData([]);
         setSimpleModePaused(false);
-        
+        setSessionDuration(0);
+
         if (settings.enableRecording) {
             audioService.startRecording();
         }
 
         if (pitchIntervalRef.current) clearInterval(pitchIntervalRef.current);
         pitchIntervalRef.current = window.setInterval(() => {
-            if (simpleModePaused) return; 
+            if (pausedRef.current) return;
             const p = audioService.getPitch();
-            const time = Date.now() - startTimeRef.current;
+            // Active time (pauses excluded) so pitch data lines up with the paused recording
+            const time = Date.now() - startTimeRef.current - pausedTotalRef.current;
             const newPoint = { time, pitch: p };
             pitchDataRef.current.push(newPoint);
             setLivePitchData(prev => [...prev, newPoint].filter(dp => (time - dp.time) < 60000));
         }, 50);
-
-        if (settings.planMode === 'simple') {
-            setSessionDuration(0);
-            timerRef.current = window.setInterval(() => {
-                // Check current state in closure or ref? 
-                // Since this closure captures initial state, we need to use ref or state callback logic.
-                // But setInterval won't see updated state. 
-                // Better approach: Use a ref for paused state inside interval.
-            }, 1000);
-        }
 
         setAppState(AppState.TRAINING);
         setStatusMessage("Training Active");
@@ -736,10 +735,24 @@ const App: React.FC = () => {
       }
   }, [appState, simpleModePaused, settings.planMode]);
 
+  const setPaused = (paused: boolean) => {
+    if (paused === pausedRef.current) return;
+    pausedRef.current = paused;
+    if (paused) {
+        pauseStartRef.current = Date.now();
+        audioService.pauseRecording();
+    } else {
+        pausedTotalRef.current += Date.now() - pauseStartRef.current;
+        audioService.resumeRecording();
+    }
+    setSimpleModePaused(paused);
+  };
+
   const finishWorkout = async () => {
     if (pitchIntervalRef.current) clearInterval(pitchIntervalRef.current);
-    if (timerRef.current) clearInterval(timerRef.current);
-    
+    if (pausedRef.current) setPaused(false); // close the open pause so it's subtracted
+    endTimeRef.current = Date.now();
+
     if (settings.enableRecording) {
         const blob = await audioService.stopRecording();
         setTempRecordingBlob(blob);
@@ -750,8 +763,9 @@ const App: React.FC = () => {
   };
 
   const saveSessionLog = async (healthLog: VocalHealthLog) => {
-    const endTime = Date.now();
-    const duration = Math.round((endTime - startTimeRef.current) / 1000);
+    // Measured at Stop, not at Save, and without paused time
+    const endTime = endTimeRef.current;
+    const duration = Math.round((endTime - startTimeRef.current - pausedTotalRef.current) / 1000);
     const todayStr = getLocalISODate();
 
     let recordingId: string | undefined;
@@ -790,11 +804,14 @@ const App: React.FC = () => {
 
     let newXp = stats.xp + xpGained;
     let newLevel = stats.level;
-    const xpNeeded = newLevel * XP_LEVEL_BASE;
-    
-    if (!settings.disableLeveling && newXp >= xpNeeded) {
+
+    // Loop: one big session (e.g. on a 5x day) can cross several levels
+    while (!settings.disableLeveling && newXp >= newLevel * XP_LEVEL_BASE) {
+        newXp -= newLevel * XP_LEVEL_BASE;
         newLevel++;
-        newXp -= xpNeeded;
+    }
+
+    if (newLevel > stats.level) {
         // Level Up Effect
         confetti({ 
             particleCount: 200, 
@@ -1007,15 +1024,15 @@ const App: React.FC = () => {
       }
   };
 
-  const handleResetApp = () => {
-      if (window.velopackApi) {
-          window.velopackApi.clearAppData();
-          localStorage.clear();
-          window.location.reload();
-      } else {
-          localStorage.clear();
-          window.location.reload();
+  const handleResetApp = async () => {
+      try {
+          await clearAllAudioBlobs();
+      } catch (e) {
+          console.error("Failed to delete recordings", e);
       }
+      window.velopackApi?.clearAppData();
+      localStorage.clear();
+      window.location.reload();
   };
 
   // UI Components mapping
@@ -1113,7 +1130,8 @@ const App: React.FC = () => {
                             <SessionPlayer 
                                 routine={settings.currentRoutine} 
                                 onComplete={finishWorkout} 
-                                onStop={finishWorkout} 
+                                onStop={finishWorkout}
+                                onPauseChange={setPaused}
                                 beepVolume={settings.beepVolume}
                             />
                         </div>
@@ -1136,7 +1154,7 @@ const App: React.FC = () => {
                             </div>
                             
                             <div className="shrink-0 flex justify-center gap-4">
-                                <Button variant={simpleModePaused ? 'primary' : 'secondary'} size="lg" onClick={() => setSimpleModePaused(!simpleModePaused)}>
+                                <Button variant={simpleModePaused ? 'primary' : 'secondary'} size="lg" onClick={() => setPaused(!simpleModePaused)}>
                                     {simpleModePaused ? <Play size={24} /> : <Pause size={24} />}
                                 </Button>
                                 <Button variant="danger" size="lg" onClick={finishWorkout} className="w-32 text-xs font-bold whitespace-normal leading-tight">
