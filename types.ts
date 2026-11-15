@@ -41,7 +41,8 @@ export interface TrainingSession {
   targetPitch?: number;
   targetRange?: PitchRange;
   healthLog?: VocalHealthLog; 
-  routineUsed?: string; 
+  routineUsed?: string;
+  routineName?: string; // name at the time of the session, so renaming or deleting the routine keeps history
   mode?: 'structured' | 'simple';
 }
 
@@ -86,19 +87,23 @@ export interface AppSettings {
   outputDeviceId: string;
   micGain: number;
   
-  // Routine / Plan Settings
-  planMode: 'structured' | 'simple';
-  currentRoutine: Routine; 
-  simplePlanText: string; 
-  practicePrompts: string[]; // Global fallback prompts
-  
+  // Routines: several saved, one used on Today
+  routines: Routine[];
+  activeRoutineId: string;
+
+  // Legacy (≤1.0.5), read once for migration and no longer written by the UI
+  planMode?: 'structured' | 'simple';
+  currentRoutine?: Routine;
+  simplePlanText?: string;
+  practicePrompts?: string[];
+
   sessionFocus: string;
   
   // Appearance
   theme: 'system' | 'dark' | 'light';
   colorTheme: ColorTheme; 
   customColors?: { primary: string; secondary: string }; // For Grand Master
-  planFontSize: number;
+  planFontSize?: number; // legacy
   
   targetPitch: number; // legacy single target, kept as the centre of targetRange
   targetRange: PitchRange;

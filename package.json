@@ -13,19 +13,16 @@
     "start": "electron .",
     "win:build": "npm run pack:win && npm run make:release",
     "pack:win": "npm run build && electron-builder --dir --config.asar=true",
-    "make:release": "vpk pack --packId Resona --packVersion %npm_package_version%--packDir Releases/win-unpacked --mainExe Resona.exe --outputDir Releases",
+    "make:release": "vpk pack --packId Resona --packVersion %npm_package_version% --packDir Releases/win-unpacked --mainExe Resona.exe --outputDir Releases",
     "releases": "npm run win:build"
   },
   "dependencies": {
     "canvas-confetti": "^1.9.4",
-    "date-fns": "^4.1.0",
     "electron-store": "^11.0.2",
-    "lucide-react": "^0.562.0",
     "motion": "^12.43.0",
     "pitchy": "^4.1.0",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
-    "recharts": "^2.12.0",
     "velopack": "^0.0.1369-g1d5c984"
   },
   "devDependencies": {

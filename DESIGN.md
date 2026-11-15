@@ -146,6 +146,39 @@ components:
   calendar-day-trained:
     backgroundColor: "{colors.primary}"
     textColor: "{colors.on-primary}"
+  switch:
+    rounded: "{rounded.full}"
+    height: "20px"
+    width: "40px"
+  switch-on:
+    backgroundColor: "{colors.primary}"
+  settings-row:
+    typography: "{typography.body}"
+    padding: "14px 0"
+  day-toggle:
+    textColor: "{colors.text-muted}"
+    rounded: "{rounded.control}"
+    height: "32px"
+    width: "36px"
+  day-toggle-on:
+    backgroundColor: "{colors.primary}"
+    textColor: "{colors.on-primary}"
+  accent-swatch:
+    rounded: "{rounded.full}"
+    size: "24px"
+  command-menu:
+    backgroundColor: "{colors.bg-surface}"
+    rounded: "{rounded.surface}"
+    width: "560px"
+  command-item:
+    typography: "{typography.body}"
+    rounded: "{rounded.control}"
+    padding: "8px 12px"
+  routine-list-item:
+    textColor: "{colors.text-main}"
+    typography: "{typography.body}"
+    rounded: "{rounded.control}"
+    padding: "8px 8px 8px 12px"
 ---
 
 # Design System: Resona
@@ -162,7 +195,9 @@ Motion is quick, interruptible and physical without bounce: ease-out for entranc
 
 A session is a full-window focus mode. It keeps the same palette, hairlines and radii but adds a display tier read from a step back from the screen, and the accent inside it carries only signal: a primary action, a selection, progress (block progress, the recording scrubber) and "in range".
 
-Progress is a reading page, not a dashboard: ruled sections that each answer one question, charts that all share the range band, sessions in a ruled table that expand in place, and destructive actions that confirm in a popover grown from their own trigger. The Routines page (RoutineEditor, PlanEditor), the SettingsForm and LevelProgressModal still carry the pre-redesign look (scheduled for phase 4); they are drift, not reference.
+Progress is a reading page, not a dashboard: ruled sections that each answer one question, charts that all share the range band, sessions in a ruled table that expand in place, and destructive actions that confirm in a popover grown from their own trigger.
+
+Routines and Settings are working pages edited in place: routines in a two-column list and editor with ruled, draggable exercise rows; settings as Windows Settings rows that apply the moment they change, with no Save button. A Ctrl+K command menu reaches every page and action, entered from one Search row at the top of the sidebar. Every surface now follows this system; no pre-redesign component remains.
 
 **Key Characteristics:**
 - Two-layer shell: Mica-tinted nav layer, one raised content pane with a concentric 10px top-left corner.
@@ -170,10 +205,12 @@ Progress is a reading page, not a dashboard: ruled sections that each answer one
 - Geist for all UI text; Geist Mono with tabular figures only for measurements (Hz, times, counts, indices).
 - Alpha hairlines divide content; rows and sections, not cards.
 - Small concentric radii: 6px controls, 10px surfaces.
-- Text first: a custom 16px, 1.5-stroke icon set used only for transport and system controls.
+- Text first: a custom 16px, 1.5-stroke icon set used only for transport, reordering, search and system controls.
 - The range band is the one signature object, drawn with the same tint and edge recipe wherever pitch appears.
 - Two type tiers: the page tier for arm's-length reading and a focus tier for reading at a distance during a session.
 - No native dialogs: every destructive action confirms in a popover from the button that asked.
+- Edits apply in place: settings and routines save as they change.
+- One visible keyboard shortcut in the whole app: "Search · Ctrl K".
 
 ## Colors
 
@@ -207,6 +244,8 @@ All values below are resolved for the default Violet theme (accent source #8b5cf
 **The Range Colour Rule.** Pitch status has three colours only: accent for "In range", ink for "Below range" and "Above range", muted for "Listening". Out of range is never red; danger is kept for strain and errors.
 
 **The Dark Depth Rule.** In dark mode, lighter means closer: sidebar (L 0.165) sits lowest, then app ground (0.2), surface (0.245), panel (0.27).
+
+**The Ring Means Locked Rule.** A reward colour that is not yet earned is an empty 2px ring in its own colour; an earned one is filled. Locked colours are never shown as faded or pastel fills. Swatches are drawn at `oklch(from <source> 0.6 min(c, 0.16) h)`, the same lightness and chroma cap as the accent.
 
 ## Typography
 
@@ -249,6 +288,8 @@ The window is a column: a 36px title bar, then a row of a 216px sidebar and the 
 Pages sit left-anchored next to the nav, like Windows Settings, in a PageFrame: 40px side padding, 28px top, 64px bottom, max width 1000px (760px narrow for Settings, 1200px wide for Progress). The page header is 28px above content. Sections stack with 40px gap plus 32px padding above a hairline; the first section has neither. Lists are rows of 10px vertical padding divided by hairlines, laid out as a grid of index, label and right-aligned measurement. The Today page is a single hairline-bounded band (title and summary left, Change and Start right), then "Your voice" (the range band with recent session medians and a one-line muted summary), the routine list and the Focus note.
 
 The Progress page uses the wide frame and stacks five sections in a fixed order, each heading a plain question or name: "Is your voice changing?" (pitch trend), "Then and now" (compare recordings), "Consistency" (streak sentence and two-month calendar), "Sessions" (the session table, then recordings without a session), "Goals and achievements" (ruled lists). Charts fill the column width; nothing sits in a card.
+
+The Routines page is two columns aligned to the top: the routine list (10.5rem wide below the xl breakpoint, 13rem from xl) and the selected routine's editor filling the rest, 24px apart (40px from xl). The editor header puts the name and summary left and its actions right from xl, and stacks them below xl. Settings uses the narrow frame: groups (a 15px heading, then a hairline) 40px apart, each a column of rows.
 
 Focus mode covers the whole window below the title bar, sidebar included, on the app ground with a hairline at its top. Its gutters are 48px. A routine session stacks: the block-progress hairline (16px from the top), a header with the focus title left and the timer right, the prompt row, the live pitch chart filling the remaining height (220px minimum), and a 64px footer above a hairline, laid out as three columns: End session left, transport centred, position and "Next: title" right. The mic check (560px column), summary (760px) and "Session not saved" screens are left-anchored columns inside the same layer.
 
@@ -298,7 +339,7 @@ Quiet, compact and tactile.
 - **Title bar:** the waveform mark in accent at 15px, "Resona" at 12px 500, and a muted status that crossfades with a 3px blur.
 
 ### Icons
-A custom set on a 16px grid with 1.5px round-capped strokes, so icons match Geist's stroke weight. Used only for transport (play, pause, previous, next), prompt stepping (chevrons) and system controls (close). Transport glyphs fill their triangles with the stroke colour because filled shapes read better at small sizes; pause is two 2.25px strokes. The app mark is three waveform bars.
+A custom set on a 16px grid with 1.5px round-capped strokes, so icons match Geist's stroke weight. Used only for transport (play, pause, previous, next), prompt stepping (chevrons), the reorder grip, search (the sidebar Search row and the command menu field) and system controls (close). Transport glyphs fill their triangles with the stroke colour because filled shapes read better at small sizes; pause is two 2.25px strokes. The app mark is three waveform bars.
 
 ### Range band (signature)
 The user's target pitch range as a tinted band on a log-frequency scale (70 to 420 Hz), drawn with one recipe everywhere pitch appears: Today's "Your voice", the session summary and, rotated to horizontal over time, the live chart and every Progress chart (pitch trend, pitch trace, then and now).
@@ -387,6 +428,61 @@ Goals and achievements are hairline-ruled rows. A goal row carries its label, it
 - **Saving:** sessions of 30 seconds or more of active (unpaused) time autosave. Shorter ones land on "Session not saved", which explains why and offers ghost Discard and primary "Save anyway"; a failed save shows the error in danger with "Try again".
 - **Celebration:** confetti fires only for milestones (a new level, an unlocked achievement, a claimed goal), in the resolved accent, secondary and ink colours, 350ms after the summary has entered, and never under reduced motion.
 
+### Hit slop
+Every small control reaches past its drawn edge with an invisible pseudo-element: 4px on buttons and accent swatches, 6px on small text buttons (Add timer, phrases), 8px on switches. Nothing visible changes; only the target grows.
+
+**The Hit Slop Rule.** Every control smaller than 32px gets hit slop. A small control is never a small target.
+
+### Switch
+A Windows-style toggle, 40 by 20px, fully rounded, for on/off settings.
+- **Off:** transparent track with a 1px ink 45% outline and a 12px ink 70% knob; hover adds a 5% ink wash.
+- **On:** accent fill and border (danger when the switch is destructive) with an on-accent knob.
+- **Motion:** the knob travels 20px over 200ms ease-in-out and stretches `scaleX` 1 → 1.12 → 1 while it moves; the track colour transitions over 200ms; press scales to 0.97. 8px hit slop.
+- **Asking first:** a switch whose change has consequences (Unlock all rewards) does not flip on press; it opens the anchored Popover from the switch with the consequence, a focused ghost Cancel and a primary button naming the act.
+
+### Settings rows
+Windows Settings rows: the label (13.5px ink) and an optional hint (12.5px muted, snug leading, 52ch) on the left, the control on the right, 14px vertical padding, a hairline beneath each row. Controls are the house primitives (Segmented, Switch, Button, Confirm button) plus a native range slider (176px) with its mono value beside it, a native `select` (32px, strong hairline, 6px radius, accent border on focus) for the input device and native colour inputs for custom colours.
+- **Training days:** seven Monday-first toggles, 36 by 32px, 6px radius, two-letter labels and full day names as `aria-label`; on is accent fill with on-accent text, off a 5% ink wash with muted text.
+- **Accent swatches:** a radio group of 24px circles with a 2px border, filled when unlocked and an empty ring when locked (the Ring Means Locked Rule); the selected one carries a 2px ink ring at 2px offset. Press scales to 0.97; 4px hit slop.
+- **Update row:** "Version" with the mono version in its hint, then the state inline after a dot: "Checking…", "You're on the latest version.", an error sentence, "Updates only work in the installed app.", or "Version n is available." with a primary "Install and restart" replacing "Check for updates".
+- **Reset:** "Delete all data" is a danger Confirm button.
+
+**The Instant Settings Rule.** A setting applies the moment it changes. There is no Save button anywhere in Settings; a change with consequences asks first in a popover from its own control.
+
+### Command menu
+A Ctrl+K dialog that reaches every page and action: go to a page, start a routine or a free session, mark today as a rest day, switch colour mode, and find sessions by date.
+- **Shape:** raised surface, hairline border, 10px radius, Pop shadow, 560px maximum width, centred horizontally at 14vh from the top over a 20% black scrim. A 48px field row (search icon, 14.5px input) above a hairline, then results up to 50vh tall.
+- **Results:** grouped under 12px muted group names; 13.5px rows with an optional 12.5px muted detail right, 6px radius, the active row on a 7% ink wash that follows the pointer and the arrow keys. Enter runs, Escape closes. Combobox and listbox roles with `aria-activedescendant`.
+- **Matching:** every typed word must appear in the label, detail or keywords. Sessions appear only once something is typed. Ctrl+K is ignored during a session.
+- **Motion:** the panel enters from scale 0.97 and 6px above over 180ms ease-out and leaves to 0.98 over 140ms; the scrim fades 150 / 120ms.
+- **Entry:** one "Search · Ctrl K" row at the top of the sidebar, 32px tall, hairline outline, 6px radius, 13px muted text with the shortcut in 12px muted at the right.
+
+**The One Shortcut Rule.** "Search · Ctrl K" is the only keyboard shortcut shown anywhere in the app. Other shortcuts may exist, but no other hint, badge or key cap is drawn.
+
+### Routines list
+The saved routines as a column of 13.5px names with a 12px muted length beneath ("12 min", "open-ended" or "empty"); the routine used on Today adds " · on Today" in accent. The selected routine sits on a 6% ink wash and carries the 3px by 16px accent bar on its left edge, one element shared by layout id that slides between items over 220ms ease-in-out, like the nav indicator. A ghost sm "New routine" beneath opens a Popover menu: Blank routine, Feminization basics and Masculinization basics, each with a 12.5px muted one-line summary.
+
+### Routine editor
+- **Header:** the routine name as an inline 17px 600 input (the page-tier title), the count and total in the Mono Numbers, Sans Units form beneath, and actions: a sm secondary "Use on Today" (or accent "Used on Today" text when it already is), ghost Duplicate and a Delete Confirm button. A strong hairline closes the header.
+- **Inline fields:** every field is a borderless input that shows a 4% ink wash on hover and a raised surface with a 1px strong-hairline ring on focus.
+- **Exercise rows:** ruled rows (hairline beneath, 12px vertical padding) as a grid of drag handle, mono index and content: the inline 14px 500 title, a right-aligned mono m:ss duration (or "Open-ended"), an "Add timer" / "Remove timer" text button, an instructions textarea that grows with its content (`field-sizing: content`), an optional phrases textarea (one phrase per line), and a Remove Confirm button.
+- **Duration:** typed as m:ss and read on blur or Enter; an unreadable value reverts to the previous one rather than showing an error.
+- **Reorder:** rows are a Motion Reorder group. The grip handle starts the drag; the held row follows the pointer exactly, lifts with scale 1.01 and the Pop shadow, and its neighbours tween out of the way over 200ms ease-in-out. Arrow Up and Down on the focused handle move the row.
+- **Add:** secondary sm "Add exercise", ghost "Add open-ended" and "Add rest".
+
+**The Held Drag Rule.** While held, a dragged element tracks the pointer 1:1 with no easing or lag; only the elements making room for it animate.
+
+### Routine picker
+On Today the routine name (17px 600) is a button with a 10px chevron that opens a Popover of routines: each a row with the name and its muted length, the active one in accent at 500 and marked `aria-pressed`, then "Edit routines" beneath a hairline.
+
+### Routine templates
+New routines can start from a template (`ROUTINE_TEMPLATES`). Template copy names no pitch as the user's target: a template that depends on range tells the user to set their own target range first (Masculinization basics: "Set a lower target range on Today first").
+
+**The Direction-Neutral Template Rule.** A template never assumes a voice direction's pitch range. The user's own range comes first; templates point to it.
+
+### Level details
+A Modal titled "Level N": a 3px fully rounded hairline meter filling in accent over 250ms ease-out, the mono XP to the next level, one muted sentence of how XP is earned in the Mono Numbers, Sans Units form, then "Rewards" as a ruled list: mono "Level n", a 12px colour dot (filled when earned, an empty ring when locked), the reward name, and "Unlocked" in accent or "Locked" in muted. No confetti, no badges.
+
 ## Do's and Don'ts
 
 ### Do:
@@ -412,6 +508,12 @@ Goals and achievements are hairline-ruled rows. A goal row carries its label, it
 - **Do** confirm destructive actions with the Confirm button: a popover from the trigger with Cancel and a danger action that names the act.
 - **Do** show a recording inside its session; give only orphaned recordings their own list.
 - **Do** thin chart grid labels so they sit at least 32px apart.
+- **Do** apply settings the moment they change; ask first only for a change with consequences, in a popover from its own control.
+- **Do** draw a locked reward colour as an empty ring in its own colour and an earned one filled.
+- **Do** give every control smaller than 32px invisible hit slop (4px buttons and swatches, 6px text buttons, 8px switches).
+- **Do** let a held drag follow the pointer exactly; animate only the neighbours (200ms ease-in-out).
+- **Do** give every drag handle a keyboard alternative (Arrow Up and Down).
+- **Do** write templates that send the user to set their own target range first.
 
 ### Don't:
 - **Don't** use cards as structure: no grids of bordered or shadowed boxes holding page content.
@@ -426,4 +528,8 @@ Goals and achievements are hairline-ruled rows. A goal row carries its label, it
 - **Don't** colour out-of-range pitch red.
 - **Don't** fire confetti for ordinary session ends, or in colours outside the palette.
 - **Don't** use `window.confirm` or any native dialog for a destructive action.
-- **Don't** treat the Routines page (RoutineEditor, PlanEditor), the SettingsForm or LevelProgressModal as reference; they are legacy drift until phase 4.
+- **Don't** add a Save button to Settings.
+- **Don't** show a locked colour as a faded or pastel fill.
+- **Don't** draw keyboard shortcut hints anywhere except the sidebar's "Search · Ctrl K" row.
+- **Don't** ease or lag a dragged element behind the pointer.
+- **Don't** write a template that assumes a pitch range for a voice direction.

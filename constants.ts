@@ -65,7 +65,31 @@ export const DEFAULT_ROUTINE: Routine = {
   ]
 };
 
-export const DEFAULT_PLAN_TEXT = `Daily Plan (30-45 minutes)
+// Starting points for new routines. Blocks are copied with fresh ids when used.
+export const ROUTINE_TEMPLATES: { key: string; name: string; summary: string; blocks: Omit<Routine['blocks'][number], 'id'>[] }[] = [
+  {
+    key: 'feminization',
+    name: 'Feminization basics',
+    summary: 'Breathing, SOVT warm-up, pitch matching, small-dog resonance, cool-down.',
+    blocks: DEFAULT_ROUTINE.blocks.map(({ id, ...b }) => b),
+  },
+  {
+    key: 'masculinization',
+    name: 'Masculinization basics',
+    summary: 'Breathing, SOVT warm-up, chest resonance, open throat, pitch matching, speaking practice. Set a lower target range on Today first.',
+    blocks: [
+      { title: 'Diaphragmatic Breathing', duration: 180, description: 'Breathe low into the belly with relaxed shoulders: in through the nose (4s), out slowly (6s).' },
+      { title: 'Lip Trills or Straw (SOVT)', duration: 180, description: 'Gentle "brrr" or straw phonation with easy glides. Keep it light and comfortable; this warms up without strain.' },
+      { title: 'Chest Resonance Hum', duration: 240, description: 'Hum "mmm" on a comfortable low note with a hand on your chest. Aim to feel the vibration there. Don’t push your pitch down to get it.' },
+      { title: 'Open Throat Yawn-Sigh', duration: 240, description: 'Start a yawn to open the back of the throat, then sigh "ahh" downward from a comfortable pitch. Let the larynx settle lower on its own, without pressing.' },
+      { title: 'Pitch Matching', duration: 300, description: 'First set your own target range: Edit next to Your voice on Today. Resona starts at 239–285 Hz, a feminization target; masculinizing voices usually aim lower, often around 85–155 Hz. Then count or say short words and keep them inside it. Never force your pitch down.' },
+      { title: 'Speaking Practice', duration: 0, description: 'Read the phrases aloud with the chest resonance you found. Move on when you’re ready.', prompts: ['Good morning, how are you?', 'I’ll have a coffee, please.', 'The train leaves at half past nine.', 'Can you pass me that book?'] },
+      { title: 'Cool Down', duration: 120, description: 'Soft humming or lip trills at a comfortable pitch. Stop if anything feels strained.' },
+    ],
+  },
+];
+
+export const DEFAULT_PLAN_TEXT =`Daily Plan (30-45 minutes)
 
 1. Warm-up (5-10 minutes)
    - Diaphragmatic Breathing: 3x diaphragmatic breaths (in through the nose and out through the mouth). Breathe in to full capacity for 4 seconds, hold for 4 seconds, and breathe out for 6 seconds.
@@ -123,15 +147,12 @@ export const DEFAULT_SETTINGS: AppSettings = {
   outputDeviceId: 'default',
   micGain: 1.0,
   
-  planMode: 'structured',
-  currentRoutine: DEFAULT_ROUTINE,
-  simplePlanText: DEFAULT_PLAN_TEXT,
-  practicePrompts: [],
+  routines: [DEFAULT_ROUTINE],
+  activeRoutineId: DEFAULT_ROUTINE.id,
   
   sessionFocus: DEFAULT_SESSION_FOCUS,
   theme: 'system',
   colorTheme: 'violet',
-  planFontSize: 14,
   targetPitch: 261, // Middle C
   targetRange: { low: 239, high: 285 }, // ±1.5 semitones around middle C
   deleteSessionWithRecording: false,

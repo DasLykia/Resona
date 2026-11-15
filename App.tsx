@@ -2,7 +2,6 @@
 import React, { useState, useEffect, useLayoutEffect, useRef, useMemo } from 'react';
 import confetti from 'canvas-confetti';
 import { AnimatePresence, MotionConfig, motion } from 'motion/react';
-import { Info, Volume2, Trash2, RefreshCw, Lock, Palette, Unlock } from 'lucide-react';
 import type { UpdateInfo } from 'velopack';
 
 import { Button } from './components/Button';
@@ -10,8 +9,6 @@ import { Modal } from './components/Modal';
 import { Segmented } from './components/Segmented';
 import { Sidebar, Page } from './components/shell/Sidebar';
 import { TitleBar } from './components/shell/TitleBar';
-import { RoutineEditor } from './components/RoutineEditor';
-import { PlanEditor } from './components/PlanEditor';
 import { LevelProgressModal } from './components/LevelProgressModal';
 
 import { 
@@ -20,13 +17,17 @@ import {
 } from './types';
 import { 
   DEFAULT_SETTINGS, INITIAL_STATS, STORAGE_KEYS, ACHIEVEMENTS_LIST, 
-  XP_PER_MINUTE, XP_PER_SESSION, XP_LEVEL_BASE, THEMES, DEFAULT_ROUTINE
+  XP_PER_MINUTE, XP_PER_SESSION, XP_LEVEL_BASE, THEMES, DEFAULT_ROUTINE, DEFAULT_PLAN_TEXT
 } from './constants';
 import { 
   loadFromStorage, saveToStorage, saveAudioBlob, deleteAudioBlob, clearAllAudioBlobs
 } from './services/storage';
 import { audioService, AudioService } from './services/audio';
 import { calculateStreaks } from './services/stats';
+import { migrateRoutines, routineLength } from './services/routines';
+import { RoutinesView, RoutinePicker } from './components/routines/RoutinesView';
+import { SettingsView } from './components/settings/SettingsView';
+import { CommandMenu, Command, matches } from './components/CommandMenu';
 import { computePitchStats, rangeAround, rangeCenter, strainFromEffort } from './services/pitchStats';
 import { RangeBand } from './components/session/RangeBand';
 import { RangeEditor } from './components/session/RangeEditor';
@@ -78,363 +79,6 @@ const getLocalISODate = (d: Date = new Date()) => {
   const month = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
-};
-
-// --- Color Picker Component (Defined outside to prevent re-render issues) ---
-const ColorPickerInput = ({ label, value, onChange }: { label: string, value: string, onChange: (val: string) => void }) => (
-  <div className="flex-1 space-y-1.5">
-      <label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">{label}</label>
-      <div className="relative h-10 w-full rounded-lg border border-white/10 bg-black/20 flex items-center px-3 gap-3 hover:border-white/20 transition-colors group cursor-pointer overflow-hidden">
-          <div 
-              className="w-5 h-5 rounded-full shadow-sm border border-white/20 shrink-0" 
-              style={{ backgroundColor: value }}
-          />
-          <span className="text-xs font-mono text-text-muted group-hover:text-text transition-colors uppercase truncate">
-              {value}
-          </span>
-          <input 
-              type="color" 
-              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-              value={value}
-              onChange={(e) => onChange(e.target.value)}
-          />
-      </div>
-  </div>
-);
-
-// --- Settings Form ---
-const SettingsForm: React.FC<{ settings: AppSettings; stats: UserStats; onSave: (s: AppSettings) => void; onReset: () => void; appVersion: string }> = ({ settings, stats, onSave, onReset, appVersion }) => {
-  const [localSettings, setLocalSettings] = useState(settings);
-  const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
-  const [checkingUpdate, setCheckingUpdate] = useState(false);
-
-  useEffect(() => {
-    AudioService.getDevices().then(setDevices);
-  }, []);
-
-  const toggleDay = (dayIndex: number) => {
-    const current = localSettings.trainingDays;
-    const next = current.includes(dayIndex) 
-        ? current.filter(d => d !== dayIndex)
-        : [...current, dayIndex].sort();
-    setLocalSettings({...localSettings, trainingDays: next});
-  };
-
-  const toggleLevelingMode = () => {
-      const newValue = !localSettings.disableLeveling;
-      const msg = newValue 
-        ? "Enable 'Unlock All' Mode?\n\nYou will unlock all themes instantly, but you will STOP earning XP and leveling up while this mode is active."
-        : "Re-enable Leveling?\n\nXP earning will resume. Your theme will be reset if your level is not high enough.";
-      
-      if (confirm(msg)) {
-          let nextSettings = {...localSettings, disableLeveling: newValue};
-          
-          if (!newValue) {
-              const currentThemeDef = THEMES[nextSettings.colorTheme];
-              const isGrandMasterTheme = nextSettings.colorTheme === 'custom';
-              
-              if (isGrandMasterTheme && stats.level < 50) {
-                   nextSettings.colorTheme = 'violet';
-              } else if (currentThemeDef && stats.level < currentThemeDef.unlockLevel) {
-                   nextSettings.colorTheme = 'violet';
-              }
-          }
-          
-          setLocalSettings(nextSettings);
-      }
-  };
-
-  const checkUpdates = async () => {
-      setCheckingUpdate(true);
-      try {
-          if (!window.velopackApi) {
-              alert("Update system not available in web mode.");
-              return;
-          }
-          const update = await window.velopackApi.checkForUpdates();
-          if (update) {
-              if (confirm(`New version ${update.TargetFullRelease.Version} available. Download and install?`)) {
-                  await window.velopackApi.downloadUpdates(update);
-                  await window.velopackApi.applyUpdates(update);
-              }
-          } else {
-              alert("You are on the latest version.");
-          }
-      } catch (e) {
-          alert(`Update check failed: ${e}`);
-      } finally {
-          setCheckingUpdate(false);
-      }
-  };
-
-  const handleDeleteAll = () => {
-      if (confirm("WARNING: This will permanently delete ALL session history, recordings, goals, and settings.\n\nAre you absolutely sure you want to reset everything?")) {
-          onReset();
-      }
-  };
-
-  const handleSaveAll = () => {
-      onSave(localSettings);
-  };
-
-  const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-  const isGrandMaster = stats.level >= 50 || localSettings.disableLeveling;
-
-  return (
-    <div className="space-y-8">
-      {/* Theme Section */}
-      <section>
-        <h3 className="text-[15px] font-semibold text-text mb-3">Appearance</h3>
-        <div className="space-y-4">
-            <div className="flex items-center justify-between">
-                <span className="text-[13px] text-text">Color mode</span>
-                <Segmented
-                    label="Color mode"
-                    value={localSettings.theme}
-                    onChange={(theme) => setLocalSettings({...localSettings, theme})}
-                    options={[{ value: 'system', label: 'System' }, { value: 'light', label: 'Light' }, { value: 'dark', label: 'Dark' }]}
-                />
-            </div>
-
-            <div>
-                <label className="block text-xs font-bold text-text-muted mb-3 uppercase">Accent Color</label>
-                <div className="flex flex-wrap gap-3">
-                    {(Object.keys(THEMES) as ColorTheme[]).filter(k => k !== 'custom').map(themeKey => {
-                        const theme = THEMES[themeKey];
-                        const isLocked = !localSettings.disableLeveling && stats.level < theme.unlockLevel;
-                        
-                        return (
-                            <button
-                                key={themeKey}
-                                onClick={() => !isLocked && setLocalSettings({...localSettings, colorTheme: themeKey})}
-                                className={`w-8 h-8 rounded-full border-2 transition-all relative group flex items-center justify-center ${localSettings.colorTheme === themeKey ? 'border-text scale-110' : 'border-transparent'} ${isLocked ? 'opacity-50 cursor-not-allowed grayscale' : 'hover:scale-110'}`}
-                                style={{ backgroundColor: `oklch(from ${theme.primary} 0.6 min(c, 0.16) h)` }}
-                                title={isLocked ? `Unlocks at Lvl ${theme.unlockLevel}` : theme.name}
-                            >
-                                {isLocked && <Lock size={12} className="text-white drop-shadow-md" />}
-                            </button>
-                        );
-                    })}
-                </div>
-            </div>
-
-            {/* Grandmaster Custom Color Picker */}
-            {isGrandMaster && (
-                <div className="bg-surface p-4 rounded-xl border border-white/10 animate-in fade-in slide-in-from-top-2">
-                    <h4 className="text-xs font-bold text-primary mb-3 flex items-center gap-2">
-                        <Palette size={14} /> Grand Master Custom Theme
-                    </h4>
-                    <div className="flex gap-4">
-                        <ColorPickerInput 
-                            label="Primary Color" 
-                            value={localSettings.customColors?.primary || '#ffffff'}
-                            onChange={(val) => setLocalSettings(prev => ({
-                                ...prev, 
-                                colorTheme: 'custom',
-                                customColors: { 
-                                    primary: val, 
-                                    secondary: prev.customColors?.secondary || '#ffffff' 
-                                }
-                            }))}
-                        />
-                        <ColorPickerInput 
-                            label="Secondary Color" 
-                            value={localSettings.customColors?.secondary || '#ffffff'}
-                            onChange={(val) => setLocalSettings(prev => ({
-                                ...prev, 
-                                colorTheme: 'custom',
-                                customColors: { 
-                                    primary: prev.customColors?.primary || '#ffffff', 
-                                    secondary: val
-                                }
-                            }))}
-                        />
-                    </div>
-                </div>
-            )}
-        </div>
-      </section>
-
-      {/* Progression Section */}
-      <section>
-        <h3 className="text-[15px] font-semibold text-text mb-3">Progression</h3>
-        <div className="flex items-center justify-between p-4 rounded-xl border border-border bg-background/50">
-             <div className="flex items-center gap-3">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${localSettings.disableLeveling ? 'bg-yellow-500/20 text-yellow-500' : 'bg-surface text-text-muted'}`}>
-                    {localSettings.disableLeveling ? <Unlock size={16} /> : <Lock size={16} />}
-                </div>
-                <div>
-                    <div className="text-sm font-bold text-text">Unlock All Rewards</div>
-                    <div className="text-[10px] text-text-muted">Disable XP gain to unlock all themes immediately.</div>
-                </div>
-             </div>
-             <button 
-               onClick={toggleLevelingMode}
-               className={`w-10 h-5 rounded-full relative transition-colors ${localSettings.disableLeveling ? 'bg-yellow-500' : 'bg-border'}`}
-             >
-                <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${localSettings.disableLeveling ? 'left-6' : 'left-1'}`} />
-             </button>
-        </div>
-      </section>
-
-      {/* Schedule Section */}
-      <section>
-        <h3 className="text-[15px] font-semibold text-text mb-3">Training Schedule</h3>
-        <div className="p-4 rounded-xl border border-border bg-background/50">
-            <p className="text-xs text-text-muted mb-3">Select your target training days. Off days will not break your streak.</p>
-            <div className="flex justify-between gap-1">
-                {DAYS.map((day, i) => {
-                    const isActive = localSettings.trainingDays.includes(i);
-                    return (
-                        <button
-                            key={day}
-                            onClick={() => toggleDay(i)}
-                            className={`flex-1 aspect-square rounded flex items-center justify-center text-xs font-bold transition-all ${isActive ? 'bg-primary text-on-primary shadow-sm' : 'bg-surface border border-border text-text-muted hover:bg-white/5'}`}
-                        >
-                            {day[0]}
-                        </button>
-                    )
-                })}
-            </div>
-        </div>
-      </section>
-
-      {/* Audio & Workflow Section */}
-      <section>
-        <h3 className="text-[15px] font-semibold text-text mb-3">Hardware & Workflow</h3>
-        <div className="space-y-4 p-4 rounded-xl border border-border bg-background/50">
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-text-muted">Input Device</label>
-            <select 
-              className="w-full bg-surface border border-border rounded-lg p-2 text-sm outline-none focus:border-primary text-text"
-              value={localSettings.inputDeviceId}
-              onChange={(e) => setLocalSettings({...localSettings, inputDeviceId: e.target.value})}
-            >
-              <option value="default">System Default</option>
-              {devices.map(d => (
-                <option key={d.deviceId} value={d.deviceId}>{d.label || `Mic ${d.deviceId.slice(0,4)}...`}</option>
-              ))}
-            </select>
-          </div>
-          
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-text-muted">Mic Gain: {localSettings.micGain.toFixed(1)}x</label>
-            <input 
-              type="range" min="0" max="2" step="0.1" 
-              value={localSettings.micGain}
-              onChange={(e) => setLocalSettings({...localSettings, micGain: parseFloat(e.target.value)})}
-              className="w-full h-1 bg-border rounded-full appearance-none accent-primary cursor-pointer"
-            />
-          </div>
-
-          <div className="space-y-1 pt-2 border-t border-border">
-            <label className="text-xs font-medium text-text-muted flex items-center gap-2">
-                <Volume2 size={12} /> Routine Beep Volume: {Math.round(localSettings.beepVolume * 100)}%
-            </label>
-            <input 
-              type="range" min="0" max="1" step="0.1" 
-              value={localSettings.beepVolume}
-              onChange={(e) => setLocalSettings({...localSettings, beepVolume: parseFloat(e.target.value)})}
-              className="w-full h-1 bg-border rounded-full appearance-none accent-primary cursor-pointer"
-            />
-          </div>
-
-          <div className="flex items-center justify-between pt-2">
-             <span className="text-sm text-text">Skip Pre-Flight Check</span>
-             <button 
-               onClick={() => setLocalSettings(s => ({...s, skipPreflight: !s.skipPreflight}))}
-               className={`w-10 h-5 rounded-full relative transition-colors ${localSettings.skipPreflight ? 'bg-primary' : 'bg-border'}`}
-             >
-                <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${localSettings.skipPreflight ? 'left-6' : 'left-1'}`} />
-             </button>
-          </div>
-
-          <div className="flex items-center justify-between pt-2 border-t border-border">
-             <span className="text-sm text-text">Enable Recording</span>
-             <button 
-               onClick={() => setLocalSettings(s => ({...s, enableRecording: !s.enableRecording}))}
-               className={`w-10 h-5 rounded-full relative transition-colors ${localSettings.enableRecording ? 'bg-primary' : 'bg-border'}`}
-             >
-                <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${localSettings.enableRecording ? 'left-6' : 'left-1'}`} />
-             </button>
-          </div>
-
-          <div className="flex items-center justify-between pt-2 border-t border-border">
-             <span className="text-sm text-text">Auto Update on Startup</span>
-             <button 
-               onClick={() => setLocalSettings(s => ({...s, checkUpdatesOnStartup: !s.checkUpdatesOnStartup}))}
-               className={`w-10 h-5 rounded-full relative transition-colors ${localSettings.checkUpdatesOnStartup ? 'bg-primary' : 'bg-border'}`}
-             >
-                <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${localSettings.checkUpdatesOnStartup ? 'left-6' : 'left-1'}`} />
-             </button>
-          </div>
-
-          <div className="flex items-center justify-between pt-2 border-t border-border">
-             <div className="flex items-center gap-2">
-                <span className="text-sm text-text">Sync Delete</span>
-                <div className="group relative">
-                    <Info size={14} className="text-text-muted cursor-help" />
-                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-surface border border-border rounded text-[10px] text-text-muted opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                        Automatically delete the associated audio recording when you delete a session log.
-                    </div>
-                </div>
-             </div>
-             <button 
-               onClick={() => setLocalSettings(s => ({...s, deleteSessionWithRecording: !s.deleteSessionWithRecording}))}
-               className={`w-10 h-5 rounded-full relative transition-colors ${localSettings.deleteSessionWithRecording ? 'bg-danger' : 'bg-border'}`}
-             >
-                <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${localSettings.deleteSessionWithRecording ? 'left-6' : 'left-1'}`} />
-             </button>
-          </div>
-
-          <div className="flex items-center justify-between pt-2 border-t border-border">
-             <div className="flex items-center gap-2">
-                <span className="text-sm text-text">Persist Analytics</span>
-                <div className="group relative">
-                    <Info size={14} className="text-text-muted cursor-help" />
-                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-surface border border-border rounded text-[10px] text-text-muted opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                        Keep stats and health trends even if session logs are deleted.
-                    </div>
-                </div>
-             </div>
-             <button 
-               onClick={() => setLocalSettings(s => ({...s, retainAnalytics: !s.retainAnalytics}))}
-               className={`w-10 h-5 rounded-full relative transition-colors ${localSettings.retainAnalytics ? 'bg-primary' : 'bg-border'}`}
-             >
-                <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${localSettings.retainAnalytics ? 'left-6' : 'left-1'}`} />
-             </button>
-          </div>
-        </div>
-      </section>
-
-      {/* System Section */}
-      <section>
-          <h3 className="text-[15px] font-semibold text-text mb-3">System</h3>
-          <div className="flex flex-col gap-3">
-            <Button 
-                variant="outline" 
-                className="w-full justify-between" 
-                onClick={checkUpdates}
-                disabled={checkingUpdate}
-            >
-                <span className="flex items-center gap-2">
-                    <RefreshCw size={16} className={checkingUpdate ? "animate-spin" : ""} />
-                    {checkingUpdate ? "Checking..." : "Check for Updates"}
-                </span>
-                <span className="text-xs text-text-muted">v{appVersion}</span>
-            </Button>
-
-            <Button variant="danger" className="w-full" onClick={handleDeleteAll}>
-                <Trash2 size={16} className="mr-2" /> Reset & Delete All Data
-            </Button>
-          </div>
-      </section>
-
-      <div className="pt-4 border-t border-border">
-        <Button onClick={handleSaveAll} className="w-full">Save Configuration</Button>
-      </div>
-    </div>
-  );
 };
 
 // --- Focus Block Component ---
@@ -492,8 +136,8 @@ const App: React.FC = () => {
     return { 
         ...DEFAULT_SETTINGS, 
         ...loaded, 
-        currentRoutine: loaded.currentRoutine?.blocks ? loaded.currentRoutine : DEFAULT_SETTINGS.currentRoutine,
-        practicePrompts: [], // Ensure empty
+        // ≤1.0.5 had one routine plus a free-text plan; both carry over into the routines list
+        ...migrateRoutines(loaded, { routine: DEFAULT_ROUTINE, planText: DEFAULT_PLAN_TEXT }, () => crypto.randomUUID()),
         // Older versions stored one target pitch; turn it into a range around it
         targetRange: loaded.targetRange ?? rangeAround(loaded.targetPitch ?? DEFAULT_SETTINGS.targetPitch),
     };
@@ -512,6 +156,7 @@ const App: React.FC = () => {
   const [page, setPage] = useState<Page>('today');
   const [showWelcome, setShowWelcome] = useState(false);
   const [showLevelModal, setShowLevelModal] = useState(false);
+  const [showCommands, setShowCommands] = useState(false);
   
   // Navigation State
   // `at` makes a repeat jump to the same session a new request
@@ -795,7 +440,8 @@ const App: React.FC = () => {
         pitchData: pitchDataRef.current,
         targetPitch: rangeCenter(settings.targetRange),
         targetRange: settings.targetRange,
-        routineUsed: isRoutine ? settings.currentRoutine.id : undefined,
+        routineUsed: isRoutine ? activeRoutineOf(settings).id : undefined,
+        routineName: isRoutine ? activeRoutineOf(settings).name : undefined,
         mode: isRoutine ? 'structured' : 'simple'
     };
 
@@ -991,12 +637,16 @@ const App: React.FC = () => {
     return `${m}:${s.toString().padStart(2, '0')}`;
   };
 
-  const handleUpdateClick = async () => {
-      if (updateAvailable && window.velopackApi) {
-          if (confirm(`New version ${updateAvailable.TargetFullRelease.Version} available. Update now?`)) {
-              await window.velopackApi.downloadUpdates(updateAvailable);
-              await window.velopackApi.applyUpdates(updateAvailable);
-          }
+  // The button already says "Install and restart", so no second confirmation
+  const installUpdate = async (update: UpdateInfo | null = updateAvailable) => {
+      if (!update || !window.velopackApi) return;
+      setStatusMessage('Downloading update…');
+      try {
+          await window.velopackApi.downloadUpdates(update);
+          await window.velopackApi.applyUpdates(update);
+      } catch (e) {
+          console.error('Update failed', e);
+          setStatusMessage('Update failed. Try again from Settings');
       }
   };
 
@@ -1014,12 +664,11 @@ const App: React.FC = () => {
   // --- LAYOUT ---
   useAppearance(settings);
   const inSession = appState !== AppState.IDLE;
-  const isStructured = settings.planMode === 'structured';
-  const routineBlocks = settings.currentRoutine.blocks;
+  const routineBlocks = activeRoutineOf(settings).blocks;
   const routineIsEmpty = routineBlocks.length === 0;
   const routineMinutes = Math.round(routineBlocks.reduce((a, b) => a + b.duration, 0) / 60);
   const dateLabel = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
-  const sessionTitle = sessionKind === 'routine' ? settings.currentRoutine.name : 'Free session';
+  const sessionTitle = sessionKind === 'routine' ? activeRoutineOf(settings).name : 'Free session';
   const titleStatus = inSession ? sessionTitle : (statusMessage === 'Ready' ? undefined : statusMessage);
   const setRange = (targetRange: PitchRange) => setSettings(s => ({ ...s, targetRange, targetPitch: rangeCenter(targetRange) }));
 
@@ -1037,16 +686,13 @@ const App: React.FC = () => {
   const todayPage = (
     <PageFrame title="Today" aside={<span className="text-[13px] text-text-muted">{dateLabel}</span>}>
       <div className="flex items-center justify-between gap-6 py-5 border-y border-border">
-        <div className="min-w-0">
-          <div className="text-[17px] font-semibold tracking-[-0.01em] truncate">{settings.currentRoutine.name}</div>
+        <div className="min-w-0 flex-1">
+          <RoutinePicker routines={settings.routines} activeId={activeRoutineOf(settings).id}
+            onPick={(id) => setSettings(s => ({ ...s, activeRoutineId: id }))} onEdit={() => navigate('routines')} />
           <div className="text-[13px] text-text-muted mt-0.5">
             {routineIsEmpty
-              ? 'No exercises yet.'
-              : <><span className="font-mono tabular-nums">{routineBlocks.length}</span> exercises · <span className="font-mono tabular-nums">{routineMinutes}</span> min</>}
-            {' · '}
-            <button onClick={() => navigate('routines')} className="underline decoration-border-strong underline-offset-[3px] hover:text-text transition-colors">
-              {routineIsEmpty ? 'Add exercises' : 'Edit'}
-            </button>
+              ? <>No exercises yet. <button onClick={() => navigate('routines')} className="underline decoration-border-strong underline-offset-[3px] hover:text-text transition-colors">Add exercises</button></>
+              : <><span className="font-mono tabular-nums">{routineBlocks.length}</span> {routineBlocks.length === 1 ? 'exercise' : 'exercises'} · {routineLength(activeRoutineOf(settings))}</>}
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
@@ -1131,7 +777,7 @@ const App: React.FC = () => {
         {appState === AppState.TRAINING && (
           <FocusSession
             kind={sessionKind}
-            routine={settings.currentRoutine}
+            routine={activeRoutineOf(settings)}
             beepVolume={settings.beepVolume}
             dataRef={pitchDataRef}
             range={settings.targetRange}
@@ -1170,7 +816,7 @@ const App: React.FC = () => {
 
   // --- PROGRESS ---
   const titleOf = (s: TrainingSession) =>
-      s.mode === 'simple' ? 'Free session' : s.routineUsed === settings.currentRoutine.id ? settings.currentRoutine.name : 'Routine';
+      s.mode === 'simple' ? 'Free session' : s.routineName ?? settings.routines.find(r => r.id === s.routineUsed)?.name ?? 'Routine';
 
   const trendPoints: TrendPoint[] = useMemo(() => {
       const live: TrendPoint[] = sessions.map(s => {
@@ -1262,40 +908,20 @@ const App: React.FC = () => {
   );
 
   const routinesPage = (
-    <PageFrame
-      title="Routines"
-      fill
-      aside={
-        <Segmented
-          label="Session type"
-          value={settings.planMode}
-          onChange={(planMode) => setSettings(s => ({...s, planMode}))}
-          options={[{ value: 'structured', label: 'Guided routine' }, { value: 'simple', label: 'Simple plan' }]}
-        />
-      }
-    >
-      <div className="h-full min-h-[360px] overflow-hidden">
-        {isStructured ? (
-          <RoutineEditor 
-              routine={settings.currentRoutine} 
-              onUpdate={(r) => setSettings(s => ({...s, currentRoutine: r}))} 
-          />
-        ) : (
-          <PlanEditor 
-              plan={settings.simplePlanText} 
-              fontSize={settings.planFontSize}
-              isTraining={false}
-              onSave={(txt) => setSettings(s => ({...s, simplePlanText: txt}))}
-              onFontSizeChange={(sz) => setSettings(s => ({...s, planFontSize: sz}))}
-          />
-        )}
-      </div>
+    <PageFrame title="Routines" wide>
+      <RoutinesView
+        routines={settings.routines}
+        activeId={activeRoutineOf(settings).id}
+        onChange={(routines) => setSettings(s => ({ ...s, routines }))}
+        onSetActive={(id) => setSettings(s => ({ ...s, activeRoutineId: id }))}
+      />
     </PageFrame>
   );
 
   const settingsPage = (
     <PageFrame title="Settings" narrow>
-      <SettingsForm settings={settings} stats={stats} onSave={(s) => { setSettings(s); setStatusMessage('Settings saved'); }} onReset={handleResetApp} appVersion={appVersion} />
+      <SettingsView settings={settings} update={(patch) => setSettings(s => ({ ...s, ...patch }))} stats={stats}
+        appVersion={appVersion} onReset={handleResetApp} onInstallUpdate={installUpdate} />
     </PageFrame>
   );
 
@@ -1305,6 +931,45 @@ const App: React.FC = () => {
     routines: routinesPage,
     settings: settingsPage,
   };
+
+  // --- COMMAND MENU (Ctrl+K) ---
+  const todayKey = getLocalISODate();
+  const trainedToday = !!stats.history[todayKey];
+  const commands: Command[] = [
+      ...(['today', 'progress', 'routines', 'settings'] as Page[]).map(p => ({
+          id: `go-${p}`, group: 'Go to', label: p[0].toUpperCase() + p.slice(1), run: () => navigate(p),
+      })),
+      ...settings.routines.filter(r => r.blocks.length > 0).map(r => ({
+          id: `start-${r.id}`, group: 'Start a session', label: r.name, detail: routineLength(r),
+          keywords: 'start train routine', run: () => { setSettings(s => ({ ...s, activeRoutineId: r.id })); initiateSession('routine'); },
+      })),
+      { id: 'start-free', group: 'Start a session', label: 'Free session', keywords: 'start train stopwatch', run: () => initiateSession('free') },
+      ...(trainedToday ? [] : [{
+          id: 'rest-today', group: 'Today', label: stats.sickDays[todayKey] ? 'Unmark today as a rest day' : 'Mark today as a rest day',
+          keywords: 'sick rest streak', run: () => toggleRestDay(todayKey),
+      }]),
+      ...(['system', 'light', 'dark'] as const).filter(t => t !== settings.theme).map(t => ({
+          id: `theme-${t}`, group: 'Appearance', label: t === 'system' ? 'Follow Windows light or dark' : `Use ${t} mode`,
+          keywords: 'theme color mode appearance', run: () => setSettings(s => ({ ...s, theme: t })),
+      })),
+  ];
+  // Sessions only show once you type, e.g. "nov 12" or a routine name
+  const searchSessions = (q: string): Command[] => sessions
+      .map(s => ({ s, label: new Date(s.startTime).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) }))
+      .filter(({ s, label }) => matches({ label, detail: titleOf(s), keywords: new Date(s.startTime).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) }, q))
+      .slice(0, 8)
+      .map(({ s, label }) => ({ id: `session-${s.id}`, group: 'Sessions', label, detail: titleOf(s), run: () => jumpToSession(s.id) }));
+
+  useEffect(() => {
+      const onKey = (e: KeyboardEvent) => {
+          if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+              e.preventDefault();
+              if (appState === AppState.IDLE) setShowCommands(o => !o); // not during a session
+          }
+      };
+      window.addEventListener('keydown', onKey);
+      return () => window.removeEventListener('keydown', onKey);
+  }, [appState]);
 
   return (
     <MotionConfig reducedMotion="user">
@@ -1324,7 +989,8 @@ const App: React.FC = () => {
           xpMultiplier={dailyXpBonus}
           onOpenLevel={() => setShowLevelModal(true)}
           updateVersion={updateAvailable?.TargetFullRelease.Version}
-          onUpdate={handleUpdateClick}
+          onUpdate={() => installUpdate()}
+          onOpenCommands={() => setShowCommands(true)}
         />
 
         {/* Content pane: one raised surface with a concentric top-left corner, like Windows Settings */}
@@ -1373,12 +1039,15 @@ const App: React.FC = () => {
       </Modal>
 
       <LevelProgressModal isOpen={showLevelModal} onClose={() => setShowLevelModal(false)} stats={stats} />
+      <CommandMenu open={showCommands} onClose={() => setShowCommands(false)} commands={commands} search={searchSessions} />
     </div>
     </MotionConfig>
   );
 };
 
 const EASE_OUT = [0.23, 1, 0.32, 1] as const;
+// The routine Start runs; one always exists (the Routines page never deletes the last)
+const activeRoutineOf = (s: AppSettings) => s.routines.find(r => r.id === s.activeRoutineId) ?? s.routines[0];
 // A measurement: mono number, text unit, never split across lines
 const Num: React.FC<{ children: React.ReactNode; unit?: string }> = ({ children, unit }) =>
   <span className="whitespace-nowrap"><span className="font-mono tabular-nums text-text">{children}</span>{unit && ` ${unit}`}</span>;

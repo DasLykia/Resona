@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { motion } from 'motion/react';
+import { IconSearch } from '../icons';
 
 export type Page = 'today' | 'progress' | 'routines' | 'settings';
 
@@ -23,6 +24,7 @@ interface SidebarProps {
   onOpenLevel: () => void;
   updateVersion?: string;
   onUpdate: () => void;
+  onOpenCommands: () => void;
 }
 
 const NavItem: React.FC<{ active: boolean; label: string; onClick: () => void; animateIndicator: boolean }> = ({ active, label, onClick, animateIndicator }) => (
@@ -48,7 +50,7 @@ const NavItem: React.FC<{ active: boolean; label: string; onClick: () => void; a
 );
 
 export const Sidebar: React.FC<SidebarProps> = ({
-  page, onNavigate, disabled, streak, level, levelProgress, showLevel, xpMultiplier, onOpenLevel, updateVersion, onUpdate,
+  page, onNavigate, disabled, streak, level, levelProgress, showLevel, xpMultiplier, onOpenLevel, updateVersion, onUpdate, onOpenCommands,
 }) => {
   // Skip the stretch on first paint; only real moves animate
   const mounted = useRef(false);
@@ -63,6 +65,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
       aria-label="Main"
       className={`w-[var(--sidebar-w)] shrink-0 flex flex-col px-2 pb-3 pt-1 transition-opacity duration-200 ${disabled ? 'opacity-40 pointer-events-none' : ''}`}
     >
+      {/* The way into the Ctrl+K menu; the shortcut sits beside it so it can be learned */}
+      <button onClick={onOpenCommands}
+        className="mb-2 w-full h-8 pl-3 pr-2 flex items-center gap-2 rounded-lg text-[13px] text-text-muted border border-border hover:text-text hover:bg-text/[0.045] transition-colors active:scale-[0.97]">
+        <IconSearch size={14} />
+        <span className="flex-1 text-left">Search</span>
+        <kbd className="font-sans text-[12px] text-text-muted">Ctrl K</kbd>
+      </button>
       <div className="space-y-0.5">{NAV.map(n => item(n.id, n.label))}</div>
 
       <div className="flex-1" />

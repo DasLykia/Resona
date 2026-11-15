@@ -1,9 +1,8 @@
-
-import React, { useEffect, useRef } from 'react';
-import { UserStats } from '../types';
-import { XP_LEVEL_BASE, LEVEL_REWARDS, THEMES } from '../constants';
-import { CheckCircle2, Lock, Palette, Trophy, Star } from 'lucide-react';
-import { Button } from './Button';
+import React from 'react';
+import { motion } from 'motion/react';
+import type { UserStats } from '../types';
+import { LEVEL_REWARDS, THEMES, XP_LEVEL_BASE, XP_PER_MINUTE, XP_PER_SESSION } from '../constants';
+import { Modal } from './Modal';
 
 interface LevelProgressModalProps {
   isOpen: boolean;
@@ -11,126 +10,41 @@ interface LevelProgressModalProps {
   stats: UserStats;
 }
 
+// Level, XP to the next one, and what levels unlock. Quiet by design: no confetti, no badges.
 export const LevelProgressModal: React.FC<LevelProgressModalProps> = ({ isOpen, onClose, stats }) => {
-  const scrollRef = useRef<HTMLDivElement>(null);
-
-  const currentLevel = stats.level;
-  const currentXP = stats.xp;
-  const nextLevelXP = currentLevel * XP_LEVEL_BASE;
-  const progress = Math.min(100, (currentXP / nextLevelXP) * 100);
-
-  // Generate levels 1 to 50
-  const levels = Array.from({ length: 50 }, (_, i) => i + 1);
-
-  useEffect(() => {
-    if (isOpen && scrollRef.current) {
-      const currentEl = document.getElementById(`level-${currentLevel}`);
-      if (currentEl) {
-        currentEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
-    }
-  }, [isOpen, currentLevel]);
-
-  if (!isOpen) return null;
-
+  const need = stats.level * XP_LEVEL_BASE;
+  const pct = Math.min(100, (stats.xp / need) * 100);
   return (
-    <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-6">
-      <div className="bg-surface border border-white/10 rounded-2xl w-full max-w-2xl shadow-2xl h-[80vh] flex flex-col relative overflow-hidden animate-in zoom-in-95 duration-300">
-        
-        {/* Header Section */}
-        <div className="p-6 border-b border-white/5 bg-gradient-to-r from-primary/10 to-transparent shrink-0">
-            <div className="flex justify-between items-center mb-4">
-                <div>
-                    <h2 className="text-3xl font-black text-text italic">LEVEL PROGRESS</h2>
-                    <p className="text-text-muted text-sm">Earn XP by training to unlock themes and badges!</p>
-                </div>
-                <div className="text-right">
-                    <div className="text-4xl font-black text-primary drop-shadow-glow">Lvl {currentLevel}</div>
-                </div>
-            </div>
-
-            <div className="space-y-2">
-                <div className="flex justify-between text-xs font-bold uppercase tracking-wider text-text-muted">
-                    <span>Current Progress</span>
-                    <span>{Math.floor(currentXP)} / {nextLevelXP} XP</span>
-                </div>
-                <div className="h-4 bg-black/40 rounded-full overflow-hidden border border-white/5 relative">
-                    <div className="absolute inset-0 bg-primary/20 animate-pulse"></div>
-                    <div className="h-full bg-gradient-to-r from-primary to-secondary transition-all duration-1000 relative" style={{ width: `${progress}%` }}>
-                        <div className="absolute right-0 top-0 bottom-0 w-1 bg-white/50"></div>
-                    </div>
-                </div>
-            </div>
+    <Modal isOpen={isOpen} onClose={onClose} title={`Level ${stats.level}`} width="max-w-md">
+      <div className="text-[13.5px]">
+        <div className="h-[3px] rounded-full bg-text/10 overflow-hidden">
+          <motion.div className="h-full bg-primary rounded-full" initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 0.25, ease: [0.23, 1, 0.32, 1] }} />
         </div>
+        <p className="mt-2 text-text-muted">
+          <span className="whitespace-nowrap"><span className="font-mono tabular-nums text-text">{Math.floor(stats.xp).toLocaleString('en-US')}</span> of <span className="font-mono tabular-nums">{need.toLocaleString('en-US')}</span> XP</span> to level{' '}
+          <span className="font-mono tabular-nums">{stats.level + 1}</span>.
+        </p>
+        <p className="mt-4 leading-relaxed text-text-muted">
+          Each saved session earns <span className="font-mono tabular-nums text-text">{XP_PER_SESSION}</span> XP plus <span className="font-mono tabular-nums text-text">10</span> per level you’ve reached, and{' '}
+          <span className="font-mono tabular-nums text-text">{XP_PER_MINUTE}</span> XP per minute trained. Some days give double or more.
+        </p>
 
-        {/* Scrollable Timeline */}
-        <div ref={scrollRef} className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-6 relative">
-            <div className="absolute left-[2.25rem] top-0 bottom-0 w-1 bg-white/5 -z-10"></div>
-            
-            {levels.map((lvl) => {
-                const isReached = lvl <= currentLevel;
-                const isCurrent = lvl === currentLevel;
-                const isNext = lvl === currentLevel + 1;
-                
-                const reward = LEVEL_REWARDS.find(r => r.level === lvl);
-                
-                return (
-                    <div key={lvl} id={`level-${lvl}`} className={`flex gap-6 items-center relative ${isReached ? 'opacity-100' : 'opacity-60'}`}>
-                        {/* Level Circle */}
-                        <div className={`w-12 h-12 rounded-full border-4 flex items-center justify-center font-black text-sm z-10 transition-all ${
-                            isReached 
-                                ? 'bg-primary border-primary text-white shadow-[0_0_15px_rgba(var(--col-primary),0.5)]' 
-                                : 'bg-surface border-white/10 text-text-muted'
-                        }`}>
-                            {lvl}
-                        </div>
-
-                        {/* Card */}
-                        <div className={`flex-1 p-4 rounded-xl border transition-all ${
-                            isCurrent 
-                                ? 'bg-primary/10 border-primary/50 shadow-soft ring-1 ring-primary/30' 
-                                : 'bg-surface border-white/5'
-                        }`}>
-                            <div className="flex justify-between items-center">
-                                <div>
-                                    <div className={`text-sm font-bold ${isReached ? 'text-text' : 'text-text-muted'}`}>
-                                        {isReached ? 'Level Reached' : 'Locked'}
-                                    </div>
-                                    {reward ? (
-                                        <div className="flex items-center gap-2 mt-1">
-                                            {reward.type === 'theme' ? <Palette size={16} className="text-secondary" /> : <Trophy size={16} className="text-yellow-500" />}
-                                            <span className="font-medium text-secondary">{reward.label}</span>
-                                        </div>
-                                    ) : (
-                                        <div className="text-xs text-text-muted mt-1">Standard Level Up</div>
-                                    )}
-                                </div>
-
-                                <div className="text-right">
-                                    {isReached ? (
-                                        <CheckCircle2 className="text-primary" size={24} />
-                                    ) : (
-                                        <Lock className="text-text-muted" size={20} />
-                                    )}
-                                </div>
-                            </div>
-                            
-                            {reward && (
-                                <div className="mt-2 text-xs text-text-muted bg-black/20 p-2 rounded border border-white/5">
-                                    {reward.description}
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                );
-            })}
-        </div>
-
-        <div className="p-4 border-t border-white/5 flex justify-center bg-surface">
-            <Button onClick={onClose} className="w-full max-w-sm">Close</Button>
-        </div>
-
+        <h3 className="mt-6 mb-1 text-[13.5px] font-semibold">Rewards</h3>
+        <ul>
+          {LEVEL_REWARDS.map(r => {
+            const got = stats.level >= r.level;
+            const color = r.value ? THEMES[r.value as keyof typeof THEMES]?.primary : undefined;
+            return (
+              <li key={r.level} className="flex items-center gap-3 py-2.5 border-b border-border">
+                <span className="w-16 shrink-0 font-mono tabular-nums text-[12.5px] text-text-muted">Level {r.level}</span>
+                {color && <span aria-hidden="true" className="w-3 h-3 rounded-full shrink-0 border-2" style={{ borderColor: `oklch(from ${color} 0.6 min(c, 0.16) h)`, backgroundColor: got ? `oklch(from ${color} 0.6 min(c, 0.16) h)` : 'transparent' }} />}
+                <span className={`flex-1 ${got ? 'text-text' : 'text-text-muted'}`}>{r.type === 'theme' ? `${r.label.replace(' Theme', '')} accent color` : 'Custom accent colors'}</span>
+                <span className={`text-[12.5px] ${got ? 'text-primary' : 'text-text-muted'}`}>{got ? 'Unlocked' : 'Locked'}</span>
+              </li>
+            );
+          })}
+        </ul>
       </div>
-    </div>
+    </Modal>
   );
 };

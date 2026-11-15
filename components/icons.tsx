@@ -20,6 +20,11 @@ export const IconNext = (p: IconProps) => <Svg {...p}><path d="M12 3.5v9" /><pat
 export const IconChevronLeft = (p: IconProps) => <Svg {...p}><path d="M10 3.5L5.5 8l4.5 4.5" /></Svg>;
 export const IconChevronRight = (p: IconProps) => <Svg {...p}><path d="M6 3.5L10.5 8 6 12.5" /></Svg>;
 
+export const IconGrip = (p: IconProps) => (
+  <Svg {...p}><circle cx="6" cy="4" r=".9" fill="currentColor" stroke="none" /><circle cx="10" cy="4" r=".9" fill="currentColor" stroke="none" /><circle cx="6" cy="8" r=".9" fill="currentColor" stroke="none" /><circle cx="10" cy="8" r=".9" fill="currentColor" stroke="none" /><circle cx="6" cy="12" r=".9" fill="currentColor" stroke="none" /><circle cx="10" cy="12" r=".9" fill="currentColor" stroke="none" /></Svg>
+);
+export const IconSearch = (p: IconProps) => <Svg {...p}><circle cx="7" cy="7" r="4.25" /><path d="M10.25 10.25L13.5 13.5" /></Svg>;
+
 // The app mark: three bars of a voice waveform
 export const IconMark = (p: IconProps) => (
   <Svg {...p}><path d="M4 6v4M8 3.5v9M12 5.5v5" /></Svg>

@@ -11,7 +11,7 @@ import { PitchTrace } from './PitchTrace';
 const PAGE = 25;
 const EASE_OUT = [0.23, 1, 0.32, 1] as const;
 // Fits the 880px minimum window; time of day only shows on wide windows
-const COLS = 'grid grid-cols-[minmax(4.5rem,1fr)_minmax(6rem,1.8fr)_3.5rem_3.5rem_4rem_5.75rem_1rem] gap-3 xl:gap-4 items-baseline';
+const COLS = 'grid grid-cols-[minmax(4.5rem,1fr)_minmax(6rem,1.8fr)_3.5rem_4.5rem_4rem_5.75rem_1rem] gap-3 xl:gap-4 items-baseline';
 
 export const sessionStrain = (s: TrainingSession) =>
   s.healthLog ? (s.healthLog.strain ?? strainFromEffort(s.healthLog.effort)) : null;
@@ -100,7 +100,7 @@ export const SessionList: React.FC<SessionListProps> = ({ sessions, range, title
       </div>
 
       <div className={`${COLS} py-2 border-b border-border-strong text-[12px] text-text-muted ${selecting ? 'pl-8' : ''}`}>
-        <span>Date</span><span>Session</span><span className="text-right">Length</span><span className="text-right">Median Hz</span><span className="text-right">In range</span><span>Strain</span><span />
+        <span>Date</span><span>Session</span><span className="text-right">Length</span><span className="text-right whitespace-nowrap">Median Hz</span><span className="text-right whitespace-nowrap">In range</span><span>Strain</span><span />
       </div>
 
       {filtered.length === 0 && <p className="py-6 text-[13.5px] text-text-muted">No sessions match “{query}”.</p>}

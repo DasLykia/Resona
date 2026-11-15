@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-11-15T22:41:52.667Z",
+  "generatedAt": "2026-11-15T23:00:07.064Z",
   "title": "Design System: Resona",
   "extensions": {
     "colorMeta": {
@@ -412,6 +412,31 @@
         "name": "seek-thumb",
         "value": "opacity 150ms ease-out on hover/focus",
         "purpose": "Seek bar thumb reveal."
+      },
+      {
+        "name": "switch-knob",
+        "value": "x 20px, 200ms ease-in-out, scaleX 1 -> 1.12 -> 1",
+        "purpose": "Switch knob travel with a stretch along travel."
+      },
+      {
+        "name": "command-menu",
+        "value": "opacity + scale 0.97 + y -6px, 180ms ease-out in / scale 0.98 140ms out; scrim 150 / 120ms",
+        "purpose": "Ctrl+K command menu."
+      },
+      {
+        "name": "reorder",
+        "value": "held row follows pointer 1:1, scale 1.01 + Pop shadow; neighbours 200ms ease-in-out",
+        "purpose": "Routine exercise rows reordered by drag."
+      },
+      {
+        "name": "routine-indicator",
+        "value": "shared layoutId, 220ms ease-in-out",
+        "purpose": "Selected routine bar in the Routines list."
+      },
+      {
+        "name": "level-meter",
+        "value": "width, 250ms ease-out",
+        "purpose": "XP meter in level details."
       }
     ],
     "layout": [
@@ -454,6 +479,22 @@
       {
         "name": "calendar",
         "value": "two months, Monday first, 36px day cells"
+      },
+      {
+        "name": "routines-columns",
+        "value": "list 10.5rem (13rem from xl), gap 24px (40px from xl)"
+      },
+      {
+        "name": "settings-row",
+        "value": "14px vertical padding, hint max 52ch, groups 40px apart"
+      },
+      {
+        "name": "command-menu",
+        "value": "max 560px, top 14vh, results max 50vh"
+      },
+      {
+        "name": "hit-slop",
+        "value": "4px buttons and swatches, 6px text buttons, 8px switches"
       }
     ]
   },
@@ -577,21 +618,47 @@
       "description": "Native range input as a 3px hairline; accent fill to the playhead, thumb only on hover and focus, 1s step.",
       "html": "<input class=\"ds-seek\" type=\"range\" min=\"0\" max=\"190\" step=\"1\" value=\"42\" style=\"--pct:22%\" aria-label=\"Seek\"/>",
       "css": ".ds-seek{appearance:none;-webkit-appearance:none;width:320px;height:20px;background:transparent;cursor:pointer} .ds-seek::-webkit-slider-runnable-track{height:3px;border-radius:3px;background:linear-gradient(to right,var(--col-primary) var(--pct),color-mix(in oklch,var(--text-main) 10%,transparent) var(--pct))} .ds-seek::-webkit-slider-thumb{-webkit-appearance:none;width:11px;height:11px;margin-top:-4px;border-radius:50%;background:var(--col-primary);opacity:0;transition:opacity 150ms var(--ease-out)} .ds-seek:hover::-webkit-slider-thumb,.ds-seek:focus-visible::-webkit-slider-thumb{opacity:1} .ds-seek:focus-visible{outline:2px solid var(--col-primary);outline-offset:2px;border-radius:6px}"
+    },
+    {
+      "name": "Switch",
+      "kind": "custom",
+      "refersTo": "switch",
+      "description": "40x20 Windows-style toggle; outline when off, accent fill when on; knob stretches while moving.",
+      "html": "<div style=\"display:flex;gap:16px\"><button class=\"ds-sw\" role=\"switch\" aria-checked=\"false\" aria-label=\"Off\"><span></span></button><button class=\"ds-sw ds-sw-on\" role=\"switch\" aria-checked=\"true\" aria-label=\"On\"><span></span></button></div>",
+      "css": ".ds-sw{position:relative;width:40px;height:20px;padding:0;border-radius:9999px;border:1px solid color-mix(in oklch,var(--text-main) 45%,transparent);background:transparent;cursor:pointer;transition:background-color 200ms,border-color 200ms,transform 150ms} .ds-sw::before{content:'';position:absolute;inset:-8px} .ds-sw:hover{background:color-mix(in oklch,var(--text-main) 5%,transparent)} .ds-sw:active{transform:scale(.97)} .ds-sw:focus-visible{outline:2px solid var(--col-primary);outline-offset:2px} .ds-sw span{position:absolute;top:50%;left:3px;margin-top:-6px;width:12px;height:12px;border-radius:9999px;background:color-mix(in oklch,var(--text-main) 70%,transparent);transition:transform 200ms cubic-bezier(0.65,0,0.35,1)} .ds-sw-on,.ds-sw-on:hover{background:var(--col-primary);border-color:var(--col-primary)} .ds-sw-on span{transform:translateX(20px);background:var(--on-primary)}"
+    },
+    {
+      "name": "Settings Row",
+      "kind": "custom",
+      "refersTo": "settings-row",
+      "description": "Label and hint left, control right, hairline beneath; applies instantly.",
+      "html": "<div class=\"ds-set\"><div class=\"ds-set-r\"><div><label>Accent color</label><p>More colors unlock as you level up.</p></div><div class=\"ds-sw8\" role=\"radiogroup\" aria-label=\"Accent color\"><button role=\"radio\" aria-checked=\"true\" class=\"ds-on\" style=\"--c:oklch(0.6 0.16 292.7)\" aria-label=\"Violet\"></button><button role=\"radio\" aria-checked=\"false\" style=\"--c:oklch(0.6 0.14 162.5)\" aria-label=\"Emerald\"></button><button role=\"radio\" aria-checked=\"false\" disabled class=\"ds-lock\" style=\"--c:oklch(0.6 0.16 25)\" aria-label=\"Rose, unlocks at level 10\"></button></div></div><div class=\"ds-set-r\"><div><label>Training days</label></div><div class=\"ds-days\"><button aria-pressed=\"true\" class=\"ds-on\" aria-label=\"Monday\">Mo</button><button aria-pressed=\"false\" aria-label=\"Tuesday\">Tu</button><button aria-pressed=\"true\" class=\"ds-on\" aria-label=\"Wednesday\">We</button></div></div></div>",
+      "css": ".ds-set{width:560px;border-top:1px solid var(--border-color);font:400 13.5px Geist,system-ui,sans-serif;color:var(--text-main)} .ds-set-r{display:flex;align-items:center;justify-content:space-between;gap:32px;padding:14px 0;border-bottom:1px solid var(--border-color)} .ds-set-r p{margin:2px 0 0;font-size:12.5px;color:var(--text-muted);max-width:52ch} .ds-sw8{display:flex;gap:8px} .ds-sw8 button{position:relative;width:24px;height:24px;border-radius:9999px;border:2px solid var(--c);background:var(--c);cursor:pointer;transition:transform 150ms} .ds-sw8 button::before{content:'';position:absolute;inset:-4px} .ds-sw8 button:active{transform:scale(.97)} .ds-sw8 .ds-on{box-shadow:0 0 0 2px var(--bg-app),0 0 0 4px var(--text-main)} .ds-sw8 .ds-lock{background:transparent;cursor:not-allowed} .ds-days{display:flex;gap:4px} .ds-days button{width:36px;height:32px;border:0;border-radius:6px;background:color-mix(in oklch,var(--text-main) 5%,transparent);color:var(--text-muted);font:400 12.5px Geist,system-ui,sans-serif;cursor:pointer;transition:background-color 150ms,color 150ms,transform 150ms} .ds-days button:hover{color:var(--text-main)} .ds-days button:active{transform:scale(.97)} .ds-days .ds-on,.ds-days .ds-on:hover{background:var(--col-primary);color:var(--on-primary)} .ds-set button:focus-visible{outline:2px solid var(--col-primary);outline-offset:2px}"
+    },
+    {
+      "name": "Command Menu",
+      "kind": "custom",
+      "refersTo": "command-menu",
+      "description": "Ctrl+K dialog: search field, grouped results, active row on a 7% ink wash.",
+      "html": "<div class=\"ds-cmd\" role=\"dialog\" aria-label=\"Command menu\"><div class=\"ds-cmd-f\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\"><circle cx=\"7\" cy=\"7\" r=\"4.25\"/><path d=\"M10.25 10.25L13.5 13.5\"/></svg><input role=\"combobox\" aria-expanded=\"true\" placeholder=\"Go to a page, start a session, find a date…\"/></div><div class=\"ds-cmd-l\" role=\"listbox\"><div class=\"ds-cmd-g\">Go to</div><div role=\"option\" aria-selected=\"true\" class=\"ds-cmd-i ds-on\"><span>Progress</span></div><div role=\"option\" aria-selected=\"false\" class=\"ds-cmd-i\"><span>Routines</span></div><div class=\"ds-cmd-g\">Start</div><div role=\"option\" aria-selected=\"false\" class=\"ds-cmd-i\"><span>Feminization basics</span><small>18 min</small></div></div></div>",
+      "css": ".ds-cmd{width:560px;background:var(--bg-surface);border:1px solid var(--border-color);border-radius:10px;box-shadow:var(--shadow-pop);overflow:hidden;color:var(--text-main);animation:ds-cmd-in 180ms cubic-bezier(0.23,1,0.32,1)} @keyframes ds-cmd-in{from{opacity:0;transform:translateY(-6px) scale(.97)}} .ds-cmd-f{display:flex;align-items:center;gap:12px;height:48px;padding:0 16px;border-bottom:1px solid var(--border-color);color:var(--text-muted)} .ds-cmd-f input{flex:1;border:0;outline:none;background:transparent;color:var(--text-main);font:400 14.5px Geist,system-ui,sans-serif} .ds-cmd-l{padding:6px} .ds-cmd-g{padding:10px 12px 4px;font:400 12px Geist,system-ui,sans-serif;color:var(--text-muted)} .ds-cmd-i{display:flex;align-items:baseline;justify-content:space-between;gap:16px;padding:8px 12px;border-radius:6px;cursor:pointer;font:400 13.5px Geist,system-ui,sans-serif} .ds-cmd-i:hover,.ds-cmd-i.ds-on{background:color-mix(in oklch,var(--text-main) 7%,transparent)} .ds-cmd-i small{font-size:12.5px;color:var(--text-muted)}"
     }
   ],
   "narrative": {
     "northStar": "The Quiet Utility",
-    "overview": "Resona looks like a well-made piece of Windows itself: a Mica nav layer, a 36px custom title bar with native caption buttons, a labeled sidebar like Windows Settings, and one raised content pane that holds the work. Nothing competes for attention. Hierarchy comes from type weight, alpha hairlines and space, never from boxes, glows or badges. The one recurring object is the user's voice range; everything else stays out of its way.\n\nDensity is calm and desktop-native: 13 to 14px text, 32px controls, left-anchored content columns that cap at 1000px. Every colour is derived at runtime from two accent source colours (the level-unlocked theme), and OKLCH relative-colour syntax normalises lightness so every theme lands equally calm and legible, in light and dark.\n\nMotion is quick, interruptible and physical without bounce: ease-out for entrances, ease-in-out for moves, exits shorter than entrances, a 0.97 press, and indicators that slide between positions on a shared layout id.\n\nA session is a full-window focus mode. It keeps the same palette, hairlines and radii but adds a display tier read from a step back from the screen, and the accent inside it carries only signal: a primary action, a selection, progress (block progress, the recording scrubber) and \"in range\".\n\nProgress is a reading page, not a dashboard: ruled sections that each answer one question, charts that all share the range band, sessions in a ruled table that expand in place, and destructive actions that confirm in a popover grown from their own trigger. The Routines page (RoutineEditor, PlanEditor), the SettingsForm and LevelProgressModal still carry the pre-redesign look (scheduled for phase 4); they are drift, not reference.",
+    "overview": "Resona looks like a well-made piece of Windows itself: a Mica nav layer, a 36px custom title bar with native caption buttons, a labeled sidebar like Windows Settings, and one raised content pane that holds the work. Nothing competes for attention. Hierarchy comes from type weight, alpha hairlines and space, never from boxes, glows or badges. The one recurring object is the user's voice range; everything else stays out of its way.\n\nDensity is calm and desktop-native: 13 to 14px text, 32px controls, left-anchored content columns that cap at 1000px. Every colour is derived at runtime from two accent source colours (the level-unlocked theme), and OKLCH relative-colour syntax normalises lightness so every theme lands equally calm and legible, in light and dark.\n\nMotion is quick, interruptible and physical without bounce: ease-out for entrances, ease-in-out for moves, exits shorter than entrances, a 0.97 press, and indicators that slide between positions on a shared layout id.\n\nA session is a full-window focus mode. It keeps the same palette, hairlines and radii but adds a display tier read from a step back from the screen, and the accent inside it carries only signal: a primary action, a selection, progress (block progress, the recording scrubber) and \"in range\".\n\nProgress is a reading page, not a dashboard: ruled sections that each answer one question, charts that all share the range band, sessions in a ruled table that expand in place, and destructive actions that confirm in a popover grown from their own trigger.\n\nRoutines and Settings are working pages edited in place: routines in a two-column list and editor with ruled, draggable exercise rows; settings as Windows Settings rows that apply the moment they change, with no Save button. A Ctrl+K command menu reaches every page and action, entered from one Search row at the top of the sidebar. Every surface now follows this system; no pre-redesign component remains.",
     "keyCharacteristics": [
       "Two-layer shell: Mica-tinted nav layer, one raised content pane with a concentric 10px top-left corner.",
       "Neutrals are greys tinted a few points toward the accent hue; one accent for primary action, selection and \"in range\".",
       "Geist for all UI text; Geist Mono with tabular figures only for measurements (Hz, times, counts, indices).",
       "Alpha hairlines divide content; rows and sections, not cards.",
       "Small concentric radii: 6px controls, 10px surfaces.",
-      "Text first: a custom 16px, 1.5-stroke icon set used only for transport and system controls.",
+      "Text first: a custom 16px, 1.5-stroke icon set used only for transport, reordering, search and system controls.",
       "The range band is the one signature object, drawn with the same tint and edge recipe wherever pitch appears.",
       "Two type tiers: the page tier for arm's-length reading and a focus tier for reading at a distance during a session.",
-      "No native dialogs: every destructive action confirms in a popover from the button that asked."
+      "No native dialogs: every destructive action confirms in a popover from the button that asked.",
+      "Edits apply in place: settings and routines save as they change.",
+      "One visible keyboard shortcut in the whole app: \"Search · Ctrl K\"."
     ],
     "rules": [
       {
@@ -613,6 +680,11 @@
         "name": "The Dark Depth Rule",
         "section": "colors",
         "body": "In dark mode, lighter means closer: sidebar (L 0.165) sits lowest, then app ground (0.2), surface (0.245), panel (0.27)."
+      },
+      {
+        "name": "The Ring Means Locked Rule",
+        "section": "colors",
+        "body": "A reward colour that is not yet earned is an empty 2px ring in its own colour; an earned one is filled. Locked colours are never shown as faded or pastel fills. Swatches are drawn at `oklch(from <source> 0.6 min(c, 0.16) h)`, the same lightness and chroma cap as the accent."
       },
       {
         "name": "The Mono Means Measured Rule",
@@ -663,6 +735,31 @@
         "name": "The Recording Lives In Its Session Rule",
         "section": "components",
         "body": "A recording is shown inside its session's detail. Only orphaned recordings get a list of their own."
+      },
+      {
+        "name": "The Hit Slop Rule",
+        "section": "components",
+        "body": "Every control smaller than 32px gets hit slop. A small control is never a small target."
+      },
+      {
+        "name": "The Instant Settings Rule",
+        "section": "components",
+        "body": "A setting applies the moment it changes. There is no Save button anywhere in Settings; a change with consequences asks first in a popover from its own control."
+      },
+      {
+        "name": "The One Shortcut Rule",
+        "section": "components",
+        "body": "\"Search · Ctrl K\" is the only keyboard shortcut shown anywhere in the app. Other shortcuts may exist, but no other hint, badge or key cap is drawn."
+      },
+      {
+        "name": "The Held Drag Rule",
+        "section": "components",
+        "body": "While held, a dragged element tracks the pointer 1:1 with no easing or lag; only the elements making room for it animate."
+      },
+      {
+        "name": "The Direction-Neutral Template Rule",
+        "section": "components",
+        "body": "A template never assumes a voice direction's pitch range. The user's own range comes first; templates point to it."
       }
     ],
     "dos": [
@@ -687,7 +784,13 @@
       "Do draw the range band with the same recipe on every chart that shows pitch, including Progress charts.",
       "Do confirm destructive actions with the Confirm button: a popover from the trigger with Cancel and a danger action that names the act.",
       "Do show a recording inside its session; give only orphaned recordings their own list.",
-      "Do thin chart grid labels so they sit at least 32px apart."
+      "Do thin chart grid labels so they sit at least 32px apart.",
+      "Do apply settings the moment they change; ask first only for a change with consequences, in a popover from its own control.",
+      "Do draw a locked reward colour as an empty ring in its own colour and an earned one filled.",
+      "Do give every control smaller than 32px invisible hit slop (4px buttons and swatches, 6px text buttons, 8px switches).",
+      "Do let a held drag follow the pointer exactly; animate only the neighbours (200ms ease-in-out).",
+      "Do give every drag handle a keyboard alternative (Arrow Up and Down).",
+      "Do write templates that send the user to set their own target range first."
     ],
     "donts": [
       "Don't use cards as structure: no grids of bordered or shadowed boxes holding page content.",
@@ -702,7 +805,11 @@
       "Don't colour out-of-range pitch red.",
       "Don't fire confetti for ordinary session ends, or in colours outside the palette.",
       "Don't use `window.confirm` or any native dialog for a destructive action.",
-      "Don't treat the Routines page (RoutineEditor, PlanEditor), the SettingsForm or LevelProgressModal as reference; they are legacy drift until phase 4."
+      "Don't add a Save button to Settings.",
+      "Don't show a locked colour as a faded or pastel fill.",
+      "Don't draw keyboard shortcut hints anywhere except the sidebar's \"Search · Ctrl K\" row.",
+      "Don't ease or lag a dragged element behind the pointer.",
+      "Don't write a template that assumes a pitch range for a voice direction."
     ]
   }
 }
