@@ -99,8 +99,8 @@ input[type='number'], .tabular-nums, .font-mono { font-variant-numeric: tabular-
   color: inherit;
 }
 
-/* Ring follows each element's own shape (outline tracks border-radius) */
-:focus-visible {
+/* Ring follows each element's own shape (outline tracks border-radius); :where keeps it overridable by utilities */
+:where(:focus-visible) {
   outline: 2px solid var(--col-primary);
   outline-offset: 2px;
 }

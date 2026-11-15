@@ -133,6 +133,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   colorTheme: 'violet',
   planFontSize: 14,
   targetPitch: 261, // Middle C
+  targetRange: { low: 239, high: 285 }, // ±1.5 semitones around middle C
   deleteSessionWithRecording: false,
   checkUpdatesOnStartup: true,
   retainAnalytics: true,

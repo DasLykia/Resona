@@ -2,7 +2,7 @@
 version: 1
 slug: "app-tsx"
 primary_target: "App.tsx"
-related_targets: ["index.css"]
+related_targets: ["index.css","components/session/FocusSession.tsx"]
 ---
 
 Scope: the app shell (window, title bar, sidebar, page frame) and the shared design system every screen inherits. Mode: Operate.
@@ -24,4 +24,6 @@ FORM: pinned by the user. seed: none (pinned) "Quiet native app: Feels like a po
 
 FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance
 
-Unresolved: Today, Session, Progress and Routines layouts are redesigned in phases 2–4; this phase only rehomes them in the shell.
+Phase 2 (built): Today leads with Start, then "Your voice" (the range band with recent session medians), the routine list and the focus note. A session is a full-window focus mode: mic check, then the current exercise, timer and live pitch drawn against the range band, then an inline summary (time, % in range, median, the band with this session’s distribution, recording playback, one-tap strain, optional note; autosaved). Focus mode adds a display tier for reading at a distance: 34px exercise title, 64px mono timer, 34px mono pitch readout, 20px prompt phrase.
+
+Unresolved: Progress (phase 3) and Routines, Settings, command menu (phase 4) still carry the legacy look.

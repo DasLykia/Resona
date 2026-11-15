@@ -15,21 +15,16 @@ import { RecordingsManager } from './components/RecordingsManager';
 import { RoutineEditor } from './components/RoutineEditor';
 import { PlanEditor } from './components/PlanEditor';
 import { AnalyticsDashboard } from './components/AnalyticsDashboard';
-import { AudioVisualizer } from './components/AudioVisualizer';
-import { PitchTracker } from './components/PitchTracker';
 import { SessionHistory } from './components/SessionHistory';
 import { GoalsWidget } from './components/GoalsWidget';
 import { AchievementsWidget } from './components/AchievementsWidget';
 import { CustomCalendar } from './components/CustomCalendar';
-import { PreFlightCheck } from './components/PreFlightCheck';
-import { SessionPlayer } from './components/SessionPlayer';
-import { PostSessionModal } from './components/PostSessionModal';
 import { VocalHealthChart } from './components/VocalHealthChart';
 import { LevelProgressModal } from './components/LevelProgressModal';
 
 import { 
   AppSettings, AppState, Recording, UserStats, TrainingSession, Goal, 
-  PitchDataPoint, VocalHealthLog, ColorTheme 
+  PitchDataPoint, PitchRange, ColorTheme 
 } from './types';
 import { 
   DEFAULT_SETTINGS, INITIAL_STATS, STORAGE_KEYS, ACHIEVEMENTS_LIST, 
@@ -40,6 +35,12 @@ import {
 } from './services/storage';
 import { audioService, AudioService } from './services/audio';
 import { calculateStreaks } from './services/stats';
+import { computePitchStats, rangeAround, rangeCenter } from './services/pitchStats';
+import { RangeBand } from './components/session/RangeBand';
+import { RangeEditor } from './components/session/RangeEditor';
+import { FocusSession } from './components/session/FocusSession';
+import { MicCheck } from './components/session/MicCheck';
+import { SessionSummary } from './components/session/SessionSummary';
 import { version } from './package.json';
 
 // --- APPEARANCE ---
@@ -494,7 +495,9 @@ const App: React.FC = () => {
         ...DEFAULT_SETTINGS, 
         ...loaded, 
         currentRoutine: loaded.currentRoutine?.blocks ? loaded.currentRoutine : DEFAULT_SETTINGS.currentRoutine,
-        practicePrompts: [] // Ensure empty
+        practicePrompts: [], // Ensure empty
+        // Older versions stored one target pitch; turn it into a range around it
+        targetRange: loaded.targetRange ?? rangeAround(loaded.targetPitch ?? DEFAULT_SETTINGS.targetPitch),
     };
   });
   
@@ -517,7 +520,8 @@ const App: React.FC = () => {
   const [highlightedRecordingId, setHighlightedRecordingId] = useState<string | null>(null);
 
   // Session State
-  const [sessionDuration, setSessionDuration] = useState(0);
+  const [sessionKind, setSessionKind] = useState<'routine' | 'free'>('routine');
+  const [lastResult, setLastResult] = useState<{ sessionId: string; xpGained: number; levelUpTo: number | null } | null>(null);
   const startTimeRef = useRef<number>(0);
   const endTimeRef = useRef<number>(0);
   // Refs (not state) so the 50ms pitch interval sees the live value
@@ -526,14 +530,18 @@ const App: React.FC = () => {
   const pausedTotalRef = useRef(0);
   const pitchDataRef = useRef<PitchDataPoint[]>([]);
   const pitchIntervalRef = useRef<number | null>(null);
-  const [livePitchData, setLivePitchData] = useState<PitchDataPoint[]>([]);
+  const finishingRef = useRef(false);
+  const savedRef = useRef(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [tempRecordingBlob, setTempRecordingBlob] = useState<Blob | null>(null);
-  
-  // Simple Mode Pause State
-  const [simpleModePaused, setSimpleModePaused] = useState(false);
 
-  // Status
+  // Status: transient title-bar note that clears itself
   const [statusMessage, setStatusMessage] = useState("Ready");
+  useEffect(() => {
+      if (statusMessage === 'Ready') return;
+      const id = window.setTimeout(() => setStatusMessage('Ready'), 5000);
+      return () => clearTimeout(id);
+  }, [statusMessage]);
 
   //XP Event Logic
   const dailyXpBonus = useMemo(() => {
@@ -613,7 +621,8 @@ const App: React.FC = () => {
 
   // --- Session Flow ---
 
-  const initiateSession = () => {
+  const initiateSession = (kind: 'routine' | 'free') => {
+    setSessionKind(kind);
     if (settings.skipPreflight) {
         startWorkout();
     } else {
@@ -631,9 +640,11 @@ const App: React.FC = () => {
         pausedRef.current = false;
         pausedTotalRef.current = 0;
         pitchDataRef.current = [];
-        setLivePitchData([]);
-        setSimpleModePaused(false);
-        setSessionDuration(0);
+        finishingRef.current = false;
+        savedRef.current = false;
+        setSaveError(null);
+        setTempRecordingBlob(null);
+        setLastResult(null);
 
         if (settings.enableRecording) {
             audioService.startRecording();
@@ -645,31 +656,17 @@ const App: React.FC = () => {
             const p = audioService.getPitch();
             // Active time (pauses excluded) so pitch data lines up with the paused recording
             const time = Date.now() - startTimeRef.current - pausedTotalRef.current;
-            const newPoint = { time, pitch: p };
-            pitchDataRef.current.push(newPoint);
-            setLivePitchData(prev => [...prev, newPoint].filter(dp => (time - dp.time) < 60000));
+            // The live view reads this ref directly; no React state per sample
+            pitchDataRef.current.push({ time, pitch: p });
         }, 50);
 
         setAppState(AppState.TRAINING);
-        setStatusMessage("Training Active");
     } catch (e) {
         console.error("Failed to start session:", e);
-        setStatusMessage("Audio Error - Restart App");
+        setStatusMessage("Microphone unavailable. Check it's connected and allowed in Windows privacy settings");
         setAppState(AppState.IDLE);
     }
   };
-
-  // Dedicated effect for timer to handle pause state cleanly
-  useEffect(() => {
-      if (appState === AppState.TRAINING && settings.planMode === 'simple') {
-          const interval = setInterval(() => {
-              if (!simpleModePaused) {
-                  setSessionDuration(prev => prev + 1);
-              }
-          }, 1000);
-          return () => clearInterval(interval);
-      }
-  }, [appState, simpleModePaused, settings.planMode]);
 
   const setPaused = (paused: boolean) => {
     if (paused === pausedRef.current) return;
@@ -681,24 +678,64 @@ const App: React.FC = () => {
         pausedTotalRef.current += Date.now() - pauseStartRef.current;
         audioService.resumeRecording();
     }
-    setSimpleModePaused(paused);
   };
 
   const finishWorkout = async () => {
+    // A double click or the last block timing out mid-save must not save twice
+    if (finishingRef.current) return;
+    finishingRef.current = true;
     if (pitchIntervalRef.current) clearInterval(pitchIntervalRef.current);
     if (pausedRef.current) setPaused(false); // close the open pause so it's subtracted
     endTimeRef.current = Date.now();
 
-    if (settings.enableRecording) {
-        const blob = await audioService.stopRecording();
-        setTempRecordingBlob(blob);
+    let blob: Blob | null = null;
+    try {
+        if (settings.enableRecording) {
+            blob = await audioService.stopRecording();
+            setTempRecordingBlob(blob);
+        }
+        audioService.close();
+        // Autosave, except accidental starts: very short sessions wait for "Save anyway"
+        if (activeSeconds() >= MIN_SAVED_SECONDS) await saveSession(blob);
+    } catch (e) {
+        // Never trap the user in focus mode: land on the not-saved screen with a retry
+        console.error('Failed to finish session', e);
+        audioService.close();
+        setSaveError('Resona couldn’t save this session. Your disk may be full, or the recording failed. Try again, or discard it.');
     }
-    
-    audioService.close();
     setAppState(AppState.POST_SESSION);
+    // finishingRef stays set until the next startWorkout: the exiting session view is still clickable
   };
 
-  const saveSessionLog = async (healthLog: VocalHealthLog) => {
+  const retrySave = async () => {
+      setSaveError(null);
+      try { await saveSession(tempRecordingBlob); }
+      catch (e) { console.error('Retry save failed', e); setSaveError('Saving failed again. Check free disk space, then try again.'); }
+  };
+
+  const activeSeconds = () => Math.round((endTimeRef.current - startTimeRef.current - pausedTotalRef.current) / 1000);
+
+  // Milestone confetti in the accent palette, after the summary has entered
+  const celebrate = (opts: confetti.Options) => {
+      const probe = document.createElement('span');
+      document.body.appendChild(probe);
+      const hex = (token: string) => {
+          probe.style.color = `var(${token})`;
+          const c = document.createElement('canvas').getContext('2d')!;
+          c.fillStyle = getComputedStyle(probe).color;
+          c.fillRect(0, 0, 1, 1);
+          const [r, g, b] = c.getImageData(0, 0, 1, 1).data;
+          return '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('');
+      };
+      const colors = [hex('--col-primary'), hex('--col-secondary'), hex('--text-main')];
+      probe.remove();
+      window.setTimeout(() => confetti({ ...opts, colors, disableForReducedMotion: true }), 350);
+  };
+
+  const saveSession = async (recordingBlob: Blob | null) => {
+    // One save per session, whichever path asks (autosave, "Save anyway", double clicks)
+    if (savedRef.current) return;
+    savedRef.current = true;
     // Measured at Stop, not at Save, and without paused time
     const endTime = endTimeRef.current;
     const duration = Math.round((endTime - startTimeRef.current - pausedTotalRef.current) / 1000);
@@ -706,7 +743,7 @@ const App: React.FC = () => {
 
     let recordingId: string | undefined;
 
-    if (tempRecordingBlob && tempRecordingBlob.size > 0) {
+    if (recordingBlob && recordingBlob.size > 0) {
         recordingId = crypto.randomUUID();
         const filename = `Session_${todayStr}_${stats.totalSessions + 1}`;
         const newRec: Recording = {
@@ -714,11 +751,16 @@ const App: React.FC = () => {
             filename,
             date: endTime,
             duration,
-            size: tempRecordingBlob.size,
+            size: recordingBlob.size,
             pitchData: pitchDataRef.current,
-            targetPitch: settings.targetPitch
+            targetPitch: rangeCenter(settings.targetRange)
         };
-        await saveAudioBlob(recordingId, tempRecordingBlob);
+        try {
+            await saveAudioBlob(recordingId, recordingBlob);
+        } catch (e) {
+            savedRef.current = false; // nothing was committed, so a retry may save
+            throw e;
+        }
         setRecordings(prev => [newRec, ...prev]);
     }
 
@@ -747,21 +789,9 @@ const App: React.FC = () => {
         newLevel++;
     }
 
-    if (newLevel > stats.level) {
-        // Level Up Effect
-        confetti({ 
-            particleCount: 200, 
-            spread: 100, 
-            shapes: ['star'], 
-            colors: ['#FFD700', '#FFA500', '#FFFFFF'] 
-        });
-        setStatusMessage(`LEVEL UP! ${newLevel}`);
-    }
+    if (newLevel > stats.level) celebrate({ particleCount: 140, spread: 90, origin: { y: 0.6 } });
 
-    // Append notes from healthLog to session notes if any
-    // This allows the journal entry to appear in session history
-    const sessionNotes = healthLog.notes ? healthLog.notes : undefined;
-
+    const isRoutine = sessionKind === 'routine';
     const newSession: TrainingSession = {
         id: crypto.randomUUID(),
         startTime: startTimeRef.current,
@@ -769,11 +799,10 @@ const App: React.FC = () => {
         duration,
         recordingId,
         pitchData: pitchDataRef.current,
-        targetPitch: settings.targetPitch,
-        routineUsed: settings.planMode === 'structured' ? settings.currentRoutine.id : undefined,
-        healthLog,
-        notes: sessionNotes, // Save journal notes here
-        mode: settings.planMode
+        targetPitch: rangeCenter(settings.targetRange),
+        targetRange: settings.targetRange,
+        routineUsed: isRoutine ? settings.currentRoutine.id : undefined,
+        mode: isRoutine ? 'structured' : 'simple'
     };
 
     const updatedSessions = [newSession, ...sessions];
@@ -786,18 +815,11 @@ const App: React.FC = () => {
     const tempSessionCounts = { ...stats.sessionCounts };
     tempSessionCounts[todayStr] = (tempSessionCounts[todayStr] || 0) + 1;
 
-    // Update Health Trends (New Persistent Store)
-    const newHealthTrend = { date: endTime, effort: healthLog.effort, duration };
-    const tempHealthTrends = [...(stats.healthTrends || []), newHealthTrend];
-
     const streakMap: {[key:string]: boolean} = {};
     Object.keys(tempHistory).forEach(k => streakMap[k] = true);
     const { currentStreak } = calculateStreaks(streakMap, stats.sickDays, settings.trainingDays);
 
-    if (currentStreak > stats.currentStreak) {
-        confetti({ particleCount: 150, spread: 100 });
-    }
-
+    // Health trends get their entry when the user rates strain on the summary
     const tempStats: UserStats = {
         ...stats,
         totalSessions: stats.totalSessions + 1,
@@ -806,7 +828,6 @@ const App: React.FC = () => {
         lastTrainingDate: endTime,
         history: tempHistory,
         sessionCounts: tempSessionCounts,
-        healthTrends: tempHealthTrends,
         xp: newXp,
         level: newLevel
     };
@@ -837,7 +858,7 @@ const App: React.FC = () => {
         if (!stats.unlockedAchievements.includes(ach.id)) {
             if (ach.condition(tempStats, updatedSessions)) {
                 newUnlocks.push(ach.id);
-                confetti({ particleCount: 100, spread: 60 });
+                celebrate({ particleCount: 90, spread: 70, origin: { y: 0.6 } });
             }
         }
     });
@@ -846,11 +867,34 @@ const App: React.FC = () => {
 
     setSessions(updatedSessions);
     setStats(tempStats);
-    setRecordings(prev => prev); 
+    setLastResult({ sessionId: newSession.id, xpGained, levelUpTo: newLevel > stats.level ? newLevel : null });
+    setStatusMessage('Session saved');
+  };
 
-    setAppState(AppState.IDLE);
-    setTempRecordingBlob(null);
-    setStatusMessage(settings.disableLeveling ? "Session Saved" : `Session Saved (+${xpGained} XP)`);
+  // Summary edits patch the already-saved session (optimistic, no separate save step)
+  const updateLastSession = (patch: (s: TrainingSession) => TrainingSession) => {
+      if (!lastResult) return;
+      setSessions(prev => prev.map(s => s.id === lastResult.sessionId ? patch(s) : s));
+  };
+
+  const handleStrain = (strain: number) => {
+      const session = sessions.find(s => s.id === lastResult?.sessionId);
+      if (!session) return;
+      updateLastSession(s => ({ ...s, healthLog: { ...s.healthLog, strain, effort: strain * 2 } }));
+      // One health-trend entry per session, keyed by its end time
+      const entry = { date: session.endTime, effort: strain * 2, duration: session.duration };
+      setStats(prev => ({
+          ...prev,
+          healthTrends: [...(prev.healthTrends || []).filter(t => t.date !== session.endTime), entry].sort((a, b) => a.date - b.date),
+      }));
+  };
+
+  const handleSessionNote = (note: string) => updateLastSession(s => ({ ...s, notes: note.trim() || undefined }));
+
+  const closeSummary = () => {
+      setAppState(AppState.IDLE);
+      setTempRecordingBlob(null);
+      setLastResult(null);
   };
 
   const handleClaimGoal = (goalId: string) => {
@@ -858,7 +902,7 @@ const App: React.FC = () => {
       if (!goal) return;
 
       // Confetti Effect
-      confetti({ particleCount: 150, spread: 80, origin: { y: 0.7 } });
+      celebrate({ particleCount: 120, spread: 80, origin: { y: 0.7 } });
 
       // Move to history
       const completedGoal = { ...goal, completedAt: Date.now() };
@@ -972,13 +1016,21 @@ const App: React.FC = () => {
 
   // --- LAYOUT ---
   useAppearance(settings);
-  const isTraining = appState === AppState.TRAINING;
+  const inSession = appState !== AppState.IDLE;
   const isStructured = settings.planMode === 'structured';
   const routineBlocks = settings.currentRoutine.blocks;
-  const routineIsEmpty = isStructured && routineBlocks.length === 0;
-  const routineMinutes =Math.round(routineBlocks.reduce((a, b) => a + b.duration, 0) / 60);
+  const routineIsEmpty = routineBlocks.length === 0;
+  const routineMinutes = Math.round(routineBlocks.reduce((a, b) => a + b.duration, 0) / 60);
   const dateLabel = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
-  const titleStatus = isTraining ? 'Training' : (statusMessage === 'Ready' ? undefined : statusMessage);
+  const sessionTitle = sessionKind === 'routine' ? settings.currentRoutine.name : 'Free session';
+  const titleStatus = inSession ? sessionTitle : (statusMessage === 'Ready' ? undefined : statusMessage);
+  const setRange = (targetRange: PitchRange) => setSettings(s => ({ ...s, targetRange, targetPitch: rangeCenter(targetRange) }));
+
+  // Median pitch of the last sessions, newest first, for the range band on Today
+  const recentMedians = useMemo(() => sessions.slice(0, 10)
+      .map(s => ({ id: s.id, stats: computePitchStats(s.pitchData, s.targetRange ?? settings.targetRange) }))
+      .filter(x => x.stats.median !== null), [sessions, settings.targetRange]);
+  const latest = recentMedians[0];
 
   const navigate = (p: Page) => {
       setPage(p);
@@ -990,44 +1042,62 @@ const App: React.FC = () => {
     <PageFrame title="Today" aside={<span className="text-[13px] text-text-muted">{dateLabel}</span>}>
       <div className="flex items-center justify-between gap-6 py-5 border-y border-border">
         <div className="min-w-0">
-          <div className="text-[17px] font-semibold tracking-[-0.01em] truncate">
-            {isStructured ? settings.currentRoutine.name : 'Free session'}
-          </div>
+          <div className="text-[17px] font-semibold tracking-[-0.01em] truncate">{settings.currentRoutine.name}</div>
           <div className="text-[13px] text-text-muted mt-0.5">
-            {!isStructured
-              ? 'Stopwatch with live pitch and recording'
-              : routineIsEmpty
-                ? 'No exercises yet. Add some in Routines to start.'
-                : <><span className="font-mono tabular-nums">{routineBlocks.length}</span> exercises · <span className="font-mono tabular-nums">{routineMinutes}</span> min</>}
+            {routineIsEmpty
+              ? 'No exercises yet.'
+              : <><span className="font-mono tabular-nums">{routineBlocks.length}</span> exercises · <span className="font-mono tabular-nums">{routineMinutes}</span> min</>}
+            {' · '}
+            <button onClick={() => navigate('routines')} className="underline decoration-border-strong underline-offset-[3px] hover:text-text transition-colors">
+              {routineIsEmpty ? 'Add exercises' : 'Edit'}
+            </button>
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <Button variant="ghost" onClick={() => navigate('routines')}>{routineIsEmpty ? 'Add exercises' : 'Change'}</Button>
-          <Button size="lg" onClick={initiateSession} disabled={routineIsEmpty} className="min-w-[132px]">Start session</Button>
+          <Button variant="ghost" onClick={() => initiateSession('free')}>Free session</Button>
+          <Button size="lg" onClick={() => initiateSession('routine')} disabled={routineIsEmpty} className="min-w-[132px]">Start session</Button>
         </div>
       </div>
 
-      {isStructured && routineBlocks.length > 0 && (
-        <motion.ol
-          className="mt-2"
-          initial="hidden"
-          animate="shown"
-          variants={{ shown: { transition: { staggerChildren: 0.03 } } }}
-        >
-          {routineBlocks.map((b, i) => (
-            <motion.li
-              key={b.id}
-              variants={{ hidden: { opacity: 0, y: 4 }, shown: { opacity: 1, y: 0, transition: { duration: 0.2, ease: EASE_OUT } } }}
-              className="grid grid-cols-[1.75rem_1fr_auto] items-baseline gap-2 py-2.5 border-b border-border text-[13.5px]"
-            >
-              <span className="font-mono tabular-nums text-[12px] text-text-muted">{i + 1}</span>
-              <span className="truncate">{b.title}</span>
-              <span className="font-mono tabular-nums text-[12.5px] text-text-muted">
-                {b.duration === 0 ? 'open' : formatTime(b.duration)}
-              </span>
-            </motion.li>
-          ))}
-        </motion.ol>
+      <section className="mt-8">
+        <div className="flex items-baseline justify-between mb-5">
+          <h2 className="text-[15px] font-semibold">Your voice</h2>
+          <RangeEditor range={settings.targetRange} onChange={setRange} />
+        </div>
+        <RangeBand
+          range={settings.targetRange}
+          markers={recentMedians.map((m, i) => ({ hz: m.stats.median!, current: i === 0, label: i === 0 ? String(m.stats.median) : undefined })).reverse()}
+        />
+        <p className="mt-3 text-[13px] text-text-muted">
+          {latest
+            ? <>Last session: median <span className="font-mono tabular-nums text-text">{latest.stats.median}</span> Hz, <span className="font-mono tabular-nums text-text">{latest.stats.inRangePct}%</span> in range.{recentMedians.length > 1 && ' Grey marks are the sessions before.'}</>
+            : 'After your first session, your median pitch shows on this scale.'}
+        </p>
+      </section>
+
+      {routineBlocks.length > 0 && (
+        <section className="mt-10">
+          <h2 className="text-[15px] font-semibold mb-2">Today’s routine</h2>
+          <motion.ol
+            initial="hidden"
+            animate="shown"
+            variants={{ shown: { transition: { staggerChildren: 0.03 } } }}
+          >
+            {routineBlocks.map((b, i) => (
+              <motion.li
+                key={b.id}
+                variants={{ hidden: { opacity: 0, y: 4 }, shown: { opacity: 1, y: 0, transition: { duration: 0.2, ease: EASE_OUT } } }}
+                className="grid grid-cols-[1.75rem_1fr_auto] items-baseline gap-2 py-2.5 border-b border-border text-[13.5px]"
+              >
+                <span className="font-mono tabular-nums text-[12px] text-text-muted">{i + 1}</span>
+                <span className="truncate">{b.title}</span>
+                <span className="font-mono tabular-nums text-[12.5px] text-text-muted">
+                  {b.duration === 0 ? 'open' : formatTime(b.duration)}
+                </span>
+              </motion.li>
+            ))}
+          </motion.ol>
+        </section>
       )}
 
       <div className="mt-10">
@@ -1039,53 +1109,67 @@ const App: React.FC = () => {
     </PageFrame>
   );
 
-  const trainingView = (
-    <div className="h-full flex flex-col gap-4 p-6">
-      <div className="flex-1 min-h-0">
-        {isStructured ? (
-          <SessionPlayer 
-              routine={settings.currentRoutine} 
-              onComplete={finishWorkout} 
-              onStop={finishWorkout} 
-              onPauseChange={setPaused}
-              beepVolume={settings.beepVolume}
+  const lastSession = lastResult ? sessions.find(s => s.id === lastResult.sessionId) : undefined;
+
+  // Full-window focus layer: mic check → training → summary
+  const focusLayer = (
+    <AnimatePresence mode="wait" initial={false}>
+      <motion.div
+        key={appState}
+        className="absolute inset-0"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1, transition: { duration: 0.2, ease: EASE_OUT } }}
+        exit={{ opacity: 0, transition: { duration: 0.16, ease: EASE_OUT } }}
+      >
+        {appState === AppState.PRE_FLIGHT && (
+          <MicCheck
+            deviceId={settings.inputDeviceId}
+            gain={settings.micGain}
+            setGain={(g) => setSettings(s => ({...s, micGain: g}))}
+            skipNextTime={settings.skipPreflight}
+            setSkipNextTime={(v) => setSettings(s => ({...s, skipPreflight: v}))}
+            onReady={startWorkout}
+            onCancel={() => { audioService.close(); setAppState(AppState.IDLE); }}
           />
-        ) : (
-          <div className="h-full flex flex-col gap-4">
-              <div className="flex justify-between items-baseline shrink-0">
-                  <h1 className="text-[22px] font-semibold tracking-[-0.02em]">Free session</h1>
-                  <div className="text-3xl font-mono tabular-nums">{formatTime(sessionDuration)}</div>
-              </div>
-              <div className="flex-1 min-h-0 rounded-2xl border border-border overflow-hidden">
-                  <PlanEditor 
-                      plan={settings.simplePlanText} 
-                      fontSize={settings.planFontSize}
-                      isTraining={true}
-                      onSave={() => {}}
-                      onFontSizeChange={(s) => setSettings(prev => ({...prev, planFontSize: s}))}
-                  />
-              </div>
-              <div className="shrink-0 flex justify-center gap-3">
-                  <Button variant="secondary" size="lg" onClick={() => setPaused(!simpleModePaused)} className="min-w-[110px]">
-                      {simpleModePaused ? 'Resume' : 'Pause'}
-                  </Button>
-                  <Button variant="danger" size="lg" onClick={finishWorkout} className="min-w-[110px]">
-                      End session
-                  </Button>
-              </div>
+        )}
+        {appState === AppState.TRAINING && (
+          <FocusSession
+            kind={sessionKind}
+            routine={settings.currentRoutine}
+            beepVolume={settings.beepVolume}
+            dataRef={pitchDataRef}
+            range={settings.targetRange}
+            onRangeChange={setRange}
+            onPauseChange={setPaused}
+            onEnd={finishWorkout}
+          />
+        )}
+        {appState === AppState.POST_SESSION && lastSession && lastResult && (
+          <SessionSummary
+            session={lastSession}
+            range={lastSession.targetRange ?? settings.targetRange}
+            recording={tempRecordingBlob}
+            xpGained={lastResult.xpGained}
+            levelUpTo={lastResult.levelUpTo}
+            onStrain={handleStrain}
+            onNote={handleSessionNote}
+            onDone={closeSummary}
+          />
+        )}
+        {appState === AppState.POST_SESSION && !lastResult && (
+          <div className="max-w-[560px] px-12 pt-14">
+            <h1 className="text-[26px] font-semibold tracking-[-0.02em]">Session not saved</h1>
+            <p className={`mt-2 text-[14px] leading-relaxed max-w-[52ch] ${saveError ? 'text-danger' : 'text-text-muted'}`}>
+              {saveError ?? <>It lasted <span className="font-mono tabular-nums text-text">{activeSeconds()}</span> s, under {MIN_SAVED_SECONDS} seconds, so Resona treated it as an accidental start. It doesn’t count toward your streak or XP.</>}
+            </p>
+            <div className="mt-8 flex gap-2">
+              <Button variant="ghost" onClick={closeSummary}>Discard</Button>
+              <Button onClick={retrySave}>{saveError ? 'Try again' : 'Save anyway'}</Button>
+            </div>
           </div>
         )}
-      </div>
-      <div className="h-[260px] shrink-0 grid grid-cols-2 gap-4">
-        <PitchTracker 
-            isActive={true} 
-            targetPitch={settings.targetPitch} 
-            onTargetChange={(val) => setSettings({...settings, targetPitch: val})} 
-            livePitchData={livePitchData} 
-        />
-        <AudioVisualizer />
-      </div>
-    </div>
+      </motion.div>
+    </AnimatePresence>
   );
 
   const progressPage = (
@@ -1194,11 +1278,11 @@ const App: React.FC = () => {
     <div className="h-full flex flex-col text-text bg-sidebar">
       <TitleBar status={titleStatus} />
 
-      <div className="flex-1 flex min-h-0">
+      <div className="flex-1 flex min-h-0 relative">
         <Sidebar
           page={page}
           onNavigate={navigate}
-          disabled={isTraining}
+          disabled={inSession}
           streak={stats.currentStreak}
           level={stats.level}
           levelProgress={levelProgress}
@@ -1213,31 +1297,31 @@ const App: React.FC = () => {
         <main className="flex-1 min-w-0 relative bg-background rounded-tl-[10px] border-l border-t border-border overflow-hidden">
           <AnimatePresence initial={false}>
             <motion.div
-              key={isTraining ? 'session' : page}
+              key={page}
               className="absolute inset-0 overflow-y-auto"
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0, transition: { duration: 0.2, ease: EASE_OUT } }}
               exit={{ opacity: 0, transition: { duration: 0.16, ease: EASE_OUT } }}
             >
-              {isTraining ? trainingView : pages[page]}
+              {pages[page]}
             </motion.div>
           </AnimatePresence>
         </main>
+
+        {/* Focus mode: the session takes the whole window below the title bar; nothing else competes */}
+        <AnimatePresence>
+          {inSession && (
+            <motion.div
+              className="absolute inset-0 z-30 bg-background border-t border-border"
+              initial={{ opacity: 0, scale: 0.985 }}
+              animate={{ opacity: 1, scale: 1, transition: { duration: 0.22, ease: EASE_OUT } }}
+              exit={{ opacity: 0, scale: 0.985, transition: { duration: 0.18, ease: EASE_OUT } }}
+            >
+              {focusLayer}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
-
-      {appState === AppState.PRE_FLIGHT && (
-        <PreFlightCheck 
-            onReady={startWorkout} 
-            onCancel={() => setAppState(AppState.IDLE)} 
-            gain={settings.micGain}
-            setGain={(g) => setSettings({...settings, micGain: g})}
-            deviceId={settings.inputDeviceId}
-        />
-      )}
-
-      {appState === AppState.POST_SESSION && (
-        <PostSessionModal onSave={saveSessionLog} />
-      )}
 
       <Modal isOpen={showWelcome} onClose={() => setShowWelcome(false)} title="Welcome to Resona" width="max-w-md">
         <div className="space-y-4 text-[13.5px] leading-relaxed">
@@ -1261,6 +1345,7 @@ const App: React.FC = () => {
 };
 
 const EASE_OUT = [0.23, 1, 0.32, 1] as const;
+const MIN_SAVED_SECONDS = 30; // shorter sessions are treated as accidental until "Save anyway"
 
 // Left-anchored next to the nav like Windows Settings; `fill` lets an editor take the pane's remaining height
 const PageFrame: React.FC<{ title: string; aside?: React.ReactNode; wide?: boolean; narrow?: boolean; fill?: boolean; children: React.ReactNode }> = ({ title, aside, wide, narrow, fill, children }) => (

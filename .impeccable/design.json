@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-11-15T21:52:03.861Z",
+  "generatedAt": "2026-11-15T22:17:18.780Z",
   "title": "Design System: Resona",
   "extensions": {
     "colorMeta": {
@@ -241,6 +241,22 @@
       "measure": {
         "displayName": "Measure",
         "purpose": "Geist Mono tabular figures for Hz, durations, counts, indices only."
+      },
+      "focus-title": {
+        "displayName": "Focus title",
+        "purpose": "Current exercise name in focus mode only."
+      },
+      "focus-timer": {
+        "displayName": "Focus timer",
+        "purpose": "Block countdown or count-up; colon pulled in by -0.18em each side."
+      },
+      "focus-readout": {
+        "displayName": "Focus readout",
+        "purpose": "Live pitch in Hz in focus mode."
+      },
+      "focus-phrase": {
+        "displayName": "Focus phrase",
+        "purpose": "Pitch status word and prompt phrase in focus mode."
       }
     },
     "shadows": [
@@ -311,6 +327,51 @@
         "name": "no-bounce",
         "value": "no springs with overshoot",
         "purpose": "Everyday UI never bounces."
+      },
+      {
+        "name": "popover-actual",
+        "value": "in 180ms, out 145ms, scale 0.95, ease-out, origin at aligned trigger edge",
+        "purpose": "The built Popover primitive."
+      },
+      {
+        "name": "confirm-pulse",
+        "value": "scale 0.97 -> 1.03 -> 1, 240ms ease-out",
+        "purpose": "Save confirmations only; the one sanctioned overshoot."
+      },
+      {
+        "name": "icon-crossfade",
+        "value": "opacity + scale 0.6 + blur(3px), 180ms in / 140ms out, popLayout",
+        "purpose": "Icon buttons swapping glyphs (play/pause)."
+      },
+      {
+        "name": "phrase-crossfade",
+        "value": "opacity + blur(4px), 200ms in / 160ms out",
+        "purpose": "Prompt phrase stepping in focus mode."
+      },
+      {
+        "name": "focus-layer",
+        "value": "opacity + scale 0.985, 220ms in / 180ms out",
+        "purpose": "Entering and leaving focus mode."
+      },
+      {
+        "name": "exercise-change",
+        "value": "y 14px in 240ms / y -10px out 190ms",
+        "purpose": "Focus title block when the exercise changes."
+      },
+      {
+        "name": "band-grow",
+        "value": "scaleY 0 -> 1, 240ms ease-out, staggered across 200ms",
+        "purpose": "Range band density bars."
+      },
+      {
+        "name": "block-progress",
+        "value": "width, 1000ms linear",
+        "purpose": "Block-progress segments advance each second."
+      },
+      {
+        "name": "confetti",
+        "value": "canvas-confetti, palette colours, 350ms delay, disableForReducedMotion",
+        "purpose": "Milestones only: level up, achievement, claimed goal."
       }
     ],
     "layout": [
@@ -329,6 +390,22 @@
       {
         "name": "page-max",
         "value": "1000px (narrow 760px, wide 1200px)"
+      },
+      {
+        "name": "focus-x",
+        "value": "48px"
+      },
+      {
+        "name": "focus-footer-h",
+        "value": "64px"
+      },
+      {
+        "name": "focus-columns",
+        "value": "summary 760px, mic check 560px"
+      },
+      {
+        "name": "pitch-scale",
+        "value": "log 70-420 Hz"
       }
     ]
   },
@@ -404,18 +481,52 @@
       "description": "Floating raised surface with Pop shadow, hairline header, ghost close.",
       "html": "<div class=\"ds-dialog\" role=\"dialog\"><div class=\"ds-dialog-h\"><h2>Welcome to Resona</h2><button class=\"ds-x\" aria-label=\"Close\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\"><path d=\"M4 4l8 8M12 4l-8 8\"/></svg></button></div><div class=\"ds-dialog-b\">Start a session from Today whenever you are ready to train.</div></div>",
       "css": ".ds-dialog{width:360px;background:var(--bg-surface);border:1px solid var(--border-color);border-radius:10px;box-shadow:var(--shadow-pop);font:400 13.5px/1.6 Geist,system-ui,sans-serif;color:var(--text-main)} .ds-dialog-h{display:flex;align-items:center;justify-content:space-between;height:48px;padding:0 12px 0 20px;border-bottom:1px solid var(--border-color)} .ds-dialog-h h2{margin:0;font-size:15px;font-weight:600} .ds-x{display:grid;place-items:center;width:32px;height:32px;border:0;border-radius:6px;background:transparent;color:var(--text-muted);cursor:pointer} .ds-x:hover{color:var(--text-main);background:color-mix(in oklch,var(--text-main) 6%,transparent)} .ds-x:focus-visible{outline:2px solid var(--col-primary);outline-offset:2px} .ds-dialog-b{padding:20px}"
+    },
+    {
+      "name": "Range Band",
+      "kind": "custom",
+      "refersTo": "range-band",
+      "description": "Signature: target range on a log 70-420 Hz scale with median markers; one recipe everywhere.",
+      "html": "<div class=\"ds-band\"><div class=\"ds-band-plot\"><div class=\"ds-band-mask\"><div class=\"ds-band-base\"></div><div class=\"ds-band-fill\"></div></div><div class=\"ds-mk\" style=\"left:55%\"></div><div class=\"ds-mk\" style=\"left:61%\"></div><div class=\"ds-mk ds-mk-now\" style=\"left:64%\"><span>251</span></div></div><div class=\"ds-ticks\"><span style=\"left:7%\">80</span><span style=\"left:20%\">100</span><span style=\"left:43%\">150</span><span style=\"left:59%\">200</span><span style=\"left:71%\">250</span><span style=\"left:82%\">300</span><span style=\"left:98%\">400 Hz</span></div></div>",
+      "css": ".ds-band{width:480px;font-family:'Geist Mono',monospace;font-variant-numeric:tabular-nums;font-size:12px;color:var(--text-muted)} .ds-band-plot{position:relative;height:44px;margin-top:20px} .ds-band-mask{position:absolute;inset:0;-webkit-mask-image:linear-gradient(90deg,transparent,#000 3%,#000 97%,transparent);mask-image:linear-gradient(90deg,transparent,#000 3%,#000 97%,transparent)} .ds-band-base{position:absolute;left:0;right:0;bottom:0;height:1px;background:var(--border-strong)} .ds-band-fill{position:absolute;top:0;bottom:0;left:58%;width:11%;background:color-mix(in oklch,var(--col-primary) 13%,transparent);border-left:1px solid color-mix(in oklch,var(--col-primary) 50%,transparent);border-right:1px solid color-mix(in oklch,var(--col-primary) 50%,transparent)} .ds-mk{position:absolute;bottom:0;width:2px;margin-left:-1px;border-radius:9999px;height:50%;background:color-mix(in oklch,var(--text-main) 35%,transparent)} .ds-mk-now{height:100%;background:var(--col-primary)} .ds-mk-now span{position:absolute;bottom:100%;left:50%;transform:translateX(-50%);margin-bottom:4px;color:var(--col-primary)} .ds-ticks{position:relative;height:20px;margin-top:6px} .ds-ticks span{position:absolute;transform:translateX(-50%)}"
+    },
+    {
+      "name": "Popover",
+      "kind": "card",
+      "refersTo": "popover",
+      "description": "Portalled surface anchored under its trigger; grows from and shrinks into it.",
+      "html": "<div class=\"ds-pop\" role=\"dialog\" aria-label=\"Target range\"><h3>Target range</h3><div class=\"ds-pop-row\"><label>Low<span class=\"ds-pop-f\"><input value=\"239\"/>Hz</span></label><label>High<span class=\"ds-pop-f\"><input value=\"285\"/>Hz</span></label></div><p>Feedback shows in range, below or above.</p></div>",
+      "css": ".ds-pop{width:256px;padding:16px;background:var(--bg-surface);border:1px solid var(--border-color);border-radius:10px;box-shadow:var(--shadow-pop);font:400 13px Geist,system-ui,sans-serif;color:var(--text-main);transform-origin:top right;animation:ds-pop-in 180ms cubic-bezier(0.23,1,0.32,1)} @keyframes ds-pop-in{from{opacity:0;transform:scale(.95)}} .ds-pop h3{margin:0 0 12px;font-size:13px;font-weight:600} .ds-pop-row{display:flex;gap:12px} .ds-pop label{flex:1;font-size:12px;color:var(--text-muted)} .ds-pop-f{display:flex;align-items:center;height:32px;margin-top:4px;padding:0 10px;border:1px solid var(--border-strong);border-radius:6px;background:var(--bg-app);transition:border-color 150ms} .ds-pop-f:focus-within{border-color:var(--col-primary)} .ds-pop-f input{width:100%;border:0;background:transparent;outline:none;font:400 13px 'Geist Mono',monospace;font-variant-numeric:tabular-nums;color:var(--text-main)} .ds-pop p{margin:8px 0 0;font-size:12px;color:var(--text-muted)}"
+    },
+    {
+      "name": "Strain Radio Row",
+      "kind": "chip",
+      "refersTo": "strain-option",
+      "description": "Five-option radio row; selected tint is accent, or danger for Strained and Hurt.",
+      "html": "<div class=\"ds-strain\" role=\"radiogroup\" aria-label=\"Voice strain\"><button role=\"radio\" aria-checked=\"false\">Easy</button><button role=\"radio\" aria-checked=\"true\" class=\"ds-on\">Fine</button><button role=\"radio\" aria-checked=\"false\">Some effort</button><button role=\"radio\" aria-checked=\"false\">Strained</button><button role=\"radio\" aria-checked=\"false\" class=\"ds-on-danger\">Hurt</button></div>",
+      "css": ".ds-strain{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;width:440px} .ds-strain button{height:40px;border:0;border-radius:6px;background:color-mix(in oklch,var(--text-main) 5%,transparent);color:var(--text-muted);font:400 13px Geist,system-ui,sans-serif;cursor:pointer;transition:background-color 150ms,color 150ms,transform 150ms} .ds-strain button:hover{color:var(--text-main);background:color-mix(in oklch,var(--text-main) 8%,transparent)} .ds-strain button:active{transform:scale(.97)} .ds-strain button:focus-visible{outline:2px solid var(--col-primary);outline-offset:2px} .ds-strain .ds-on{background:color-mix(in oklch,var(--col-primary) 14%,transparent);color:var(--col-primary);font-weight:500} .ds-strain .ds-on-danger{background:color-mix(in oklch,var(--col-danger) 14%,transparent);color:var(--col-danger);font-weight:500}"
+    },
+    {
+      "name": "Focus Transport",
+      "kind": "button",
+      "refersTo": "button-transport",
+      "description": "Ghost previous/next around the one filled pause/resume button.",
+      "html": "<div class=\"ds-tr\"><button aria-label=\"Previous exercise\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M4 3.5v9\"/><path d=\"M12.5 3.5v9L6 8z\" fill=\"currentColor\"/></svg></button><button class=\"ds-tr-main\" aria-label=\"Pause\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M5.25 3.5v9M10.75 3.5v9\" stroke-width=\"2.25\"/></svg></button><button aria-label=\"Next exercise\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M12 3.5v9\"/><path d=\"M3.5 3.5v9L10 8z\" fill=\"currentColor\"/></svg></button></div>",
+      "css": ".ds-tr{display:flex;align-items:center;gap:8px} .ds-tr button{display:grid;place-items:center;height:32px;width:32px;border:0;border-radius:6px;background:transparent;color:var(--text-muted);cursor:pointer;transition:background-color 150ms,color 150ms,transform 150ms} .ds-tr button:hover{color:var(--text-main);background:color-mix(in oklch,var(--text-main) 6%,transparent)} .ds-tr button:active{transform:scale(.97)} .ds-tr button:focus-visible{outline:2px solid var(--col-primary);outline-offset:2px} .ds-tr .ds-tr-main{height:40px;width:48px;background:var(--col-primary);color:var(--on-primary)} .ds-tr .ds-tr-main:hover{background:var(--col-primary-hover);color:var(--on-primary)}"
     }
   ],
   "narrative": {
     "northStar": "The Quiet Utility",
-    "overview": "Resona looks like a well-made piece of Windows itself: a Mica nav layer, a 36px custom title bar with native caption buttons, a labeled sidebar like Windows Settings, and one raised content pane that holds the work. Nothing competes for attention. Hierarchy comes from type weight, alpha hairlines and space, never from boxes, glows or badges. The one recurring object is the user's voice range; everything else stays out of its way.\n\nDensity is calm and desktop-native: 13 to 14px text, 32px controls, left-anchored content columns that cap at 1000px. Every colour is derived at runtime from two accent source colours (the level-unlocked theme), and OKLCH relative-colour syntax normalises lightness so every theme lands equally calm and legible, in light and dark.\n\nMotion is quick, interruptible and physical without bounce: ease-out for entrances, ease-in-out for moves, exits shorter than entrances, a 0.97 press, and indicators that slide between positions on a shared layout id.",
+    "overview": "Resona looks like a well-made piece of Windows itself: a Mica nav layer, a 36px custom title bar with native caption buttons, a labeled sidebar like Windows Settings, and one raised content pane that holds the work. Nothing competes for attention. Hierarchy comes from type weight, alpha hairlines and space, never from boxes, glows or badges. The one recurring object is the user's voice range; everything else stays out of its way.\n\nDensity is calm and desktop-native: 13 to 14px text, 32px controls, left-anchored content columns that cap at 1000px. Every colour is derived at runtime from two accent source colours (the level-unlocked theme), and OKLCH relative-colour syntax normalises lightness so every theme lands equally calm and legible, in light and dark.\n\nMotion is quick, interruptible and physical without bounce: ease-out for entrances, ease-in-out for moves, exits shorter than entrances, a 0.97 press, and indicators that slide between positions on a shared layout id.\n\nA session is a full-window focus mode. It keeps the same palette, hairlines and radii but adds a display tier read from a step back from the screen, and the accent inside it carries only signal: a primary action, a selection, progress (block progress, the recording scrubber) and \"in range\". Progress, Routines and Settings internals still carry the pre-redesign look (scheduled for phases 3 and 4); they are drift, not reference.",
     "keyCharacteristics": [
       "Two-layer shell: Mica-tinted nav layer, one raised content pane with a concentric 10px top-left corner.",
       "Neutrals are greys tinted a few points toward the accent hue; one accent for primary action, selection and \"in range\".",
       "Geist for all UI text; Geist Mono with tabular figures only for measurements (Hz, times, counts, indices).",
       "Alpha hairlines divide content; rows and sections, not cards.",
       "Small concentric radii: 6px controls, 10px surfaces.",
-      "Text first: a custom 16px, 1.5-stroke icon set used only for transport and system controls."
+      "Text first: a custom 16px, 1.5-stroke icon set used only for transport and system controls.",
+      "The range band is the one signature object, drawn with the same tint and edge recipe wherever pitch appears.",
+      "Two type tiers: the page tier for arm's-length reading and a focus tier for reading at a distance during a session."
     ],
     "rules": [
       {
@@ -429,6 +540,11 @@
         "body": "The accent marks exactly three things: the primary action, the current selection, and \"in range\". If it appears for decoration, it is wrong."
       },
       {
+        "name": "The Range Colour Rule",
+        "section": "colors",
+        "body": "Pitch status has three colours only: accent for \"In range\", ink for \"Below range\" and \"Above range\", muted for \"Listening\". Out of range is never red; danger is kept for strain and errors."
+      },
+      {
         "name": "The Dark Depth Rule",
         "section": "colors",
         "body": "In dark mode, lighter means closer: sidebar (L 0.165) sits lowest, then app ground (0.2), surface (0.245), panel (0.27)."
@@ -437,6 +553,16 @@
         "name": "The Mono Means Measured Rule",
         "section": "typography",
         "body": "Geist Mono with tabular figures is used for numbers that are readings (times, Hz, counts, indices) and for nothing else."
+      },
+      {
+        "name": "The Two Tiers Rule",
+        "section": "typography",
+        "body": "The page tier (26 / 17 / 15 / 13.5 / 12) and the focus tier (64 / 34 / 20) never mix: focus sizes appear only in focus mode, and focus mode's own pages (mic check, summary, not saved) use the page tier."
+      },
+      {
+        "name": "The Mono Numbers, Sans Units Rule",
+        "section": "typography",
+        "body": "In running text the number is Geist Mono in ink and the unit stays in Geist (\"**12** min **4** s\", \"**68**% ... inside **239–285** Hz\")."
       },
       {
         "name": "The Sentence Case Rule",
@@ -452,6 +578,11 @@
         "name": "The Concentric Rule",
         "section": "shapes",
         "body": "An inner radius equals the outer radius minus its inset. No surface exceeds 12px."
+      },
+      {
+        "name": "The One Band Rule",
+        "section": "components",
+        "body": "The band is never restyled per surface. Inside it, accent means \"in range\" (plus the current median, the current selection); everything outside the band is ink at reduced alpha (30 to 55%)."
       }
     ],
     "dos": [
@@ -465,17 +596,27 @@
       "Do stagger list entrances by 30ms per item.",
       "Do scale pressable elements to 0.97 on press.",
       "Do move indicators and knobs as one element with a shared layout id, stretching about 12% along the direction of travel while moving.",
-      "Do build motion with the Motion library so every animation is interruptible, and wrap the app in `MotionConfig reducedMotion=\"user\"`."
+      "Do build motion with the Motion library so every animation is interruptible, and wrap the app in `MotionConfig reducedMotion=\"user\"`.",
+      "Do use the focus tier (34px title, 64px mono timer, 34px mono readout, 20px phrase) only inside focus mode.",
+      "Do draw the range band with the one recipe (13% accent fill, 50% accent edge lines, masked edge fade) on every surface that shows pitch.",
+      "Do colour pitch status by the Range Colour Rule: accent in range, ink below or above, muted while listening.",
+      "Do float small editors in the anchored Popover, growing from and shrinking back into their trigger.",
+      "Do autosave sessions of 30 seconds or more, and ask for \"Save anyway\" below that.",
+      "Do confirm a save with the 240ms confirm pulse beside what was saved."
     ],
     "donts": [
       "Don't use cards as structure: no grids of bordered or shadowed boxes holding page content.",
-      "Don't use gradients or glows anywhere.",
+      "Don't use gradients or glows anywhere. (An alpha mask that fades the range band's scale ends is not a colour gradient.)",
       "Don't use large radii; nothing above 12px.",
       "Don't reach for a general icon library (no Lucide everywhere); use the custom 16px 1.5-stroke set, and only where text cannot do the job.",
       "Don't add decorative pills or badges.",
       "Don't add eyebrow or kicker labels: no small or uppercase tracked text above a heading.",
-      "Don't bounce or overshoot everyday UI.",
-      "Don't put shadows on anything resting in the page flow."
+      "Don't bounce or overshoot everyday UI; the confirm pulse is the one exception.",
+      "Don't put shadows on anything resting in the page flow.",
+      "Don't use the accent decoratively inside focus mode; every accent there is a primary action, a selection, progress or \"in range\".",
+      "Don't colour out-of-range pitch red.",
+      "Don't fire confetti for ordinary session ends, or in colours outside the palette.",
+      "Don't treat Progress, Routines or Settings internals as reference; they are legacy drift until phases 3 and 4."
     ]
   }
 }

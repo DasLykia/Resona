@@ -1,4 +1,9 @@
 
+export interface PitchRange {
+  low: number; // Hz
+  high: number; // Hz
+}
+
 export interface PitchDataPoint {
   time: number;
   pitch: number;
@@ -19,8 +24,9 @@ export interface Routine {
 }
 
 export interface VocalHealthLog {
-  effort: number; // 1-10
-  clarity: number; // 1-5
+  strain?: number; // 1-5: Easy, Fine, Some effort, Strained, Hurt
+  effort: number; // 1-10 (legacy scale; new logs store strain * 2)
+  clarity?: number; // 1-5 (legacy)
   notes?: string;
 }
 
@@ -33,6 +39,7 @@ export interface TrainingSession {
   recordingId?: string;
   pitchData?: PitchDataPoint[];
   targetPitch?: number;
+  targetRange?: PitchRange;
   healthLog?: VocalHealthLog; 
   routineUsed?: string; 
   mode?: 'structured' | 'simple';
@@ -93,7 +100,8 @@ export interface AppSettings {
   customColors?: { primary: string; secondary: string }; // For Grand Master
   planFontSize: number;
   
-  targetPitch: number;
+  targetPitch: number; // legacy single target, kept as the centre of targetRange
+  targetRange: PitchRange;
   deleteSessionWithRecording: boolean;
   checkUpdatesOnStartup: boolean;
   retainAnalytics: boolean;
