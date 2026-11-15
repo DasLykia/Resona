@@ -1,15 +1,15 @@
 
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef, useMemo } from 'react';
 import confetti from 'canvas-confetti';
-import { 
-  Settings as SettingsIcon, HelpCircle, Mic, Play, Pause, Square, Activity, 
-  FolderOpen, ThermometerSnowflake, BarChart2, Moon, Sun, History, Target, 
-  Menu, ChevronLeft, LayoutDashboard, Zap, Award, Flame, User, Clock, FileText, Blocks, Info, Volume2, Calendar, Trash2, RefreshCw, Power, Edit3, ArrowUpCircle, AlertTriangle, Lock, Palette, Unlock
-} from 'lucide-react';
+import { AnimatePresence, MotionConfig, motion } from 'motion/react';
+import { Info, Volume2, Trash2, RefreshCw, Lock, Palette, Unlock } from 'lucide-react';
 import type { UpdateInfo } from 'velopack';
 
 import { Button } from './components/Button';
 import { Modal } from './components/Modal';
+import { Segmented } from './components/Segmented';
+import { Sidebar, Page } from './components/shell/Sidebar';
+import { TitleBar } from './components/shell/TitleBar';
 import { StatsPanel } from './components/StatsPanel';
 import { RecordingsManager } from './components/RecordingsManager';
 import { RoutineEditor } from './components/RoutineEditor';
@@ -42,65 +42,36 @@ import { audioService, AudioService } from './services/audio';
 import { calculateStreaks } from './services/stats';
 import { version } from './package.json';
 
-// --- THEME ENGINE ---
-const GlobalStyles = ({ theme, mode, customColors }: { theme: ColorTheme, mode: 'light' | 'dark', customColors?: { primary: string; secondary: string } }) => {
-  // Fallback to violet if theme definition is missing
-  const basePalette = THEMES[theme] || THEMES.violet;
-  
-  // Logic: Only use custom colors if the active theme is explicitly set to 'custom' AND customColors exist
-  const useCustom = theme === 'custom' && customColors;
+// --- APPEARANCE ---
+// Sets the colour mode and the two accent source colours; index.css derives every token from them in OKLCH.
+const useAppearance = (settings: AppSettings) => {
+  const [systemDark, setSystemDark] = useState(() => window.matchMedia('(prefers-color-scheme: dark)').matches);
 
-  const primary = useCustom ? customColors.primary : basePalette.primary;
-  const secondary = useCustom ? customColors.secondary : basePalette.secondary;
+  useEffect(() => {
+    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+    const onChange = (e: MediaQueryListEvent) => setSystemDark(e.matches);
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
 
-  const isDark = mode === 'dark';
-  
-  // Clean & Bright Light Mode
-  const bgApp = isDark ? '#09090b' : '#f8f9fa'; 
-  const bgSurface = isDark ? '#18181b' : '#ffffff'; 
-  const bgPanel = isDark ? '#27272a' : '#f1f3f5'; 
-  const borderColor = isDark ? '#27272a' : '#dee2e6'; 
-  
-  const textMain = isDark ? '#fafafa' : '#212529'; 
-  const textMuted = isDark ? '#a1a1aa' : '#868e96';
-  const primaryHover = isDark ? '#7c3aed' : primary; 
+  const mode = settings.theme === 'system' ? (systemDark ? 'dark' : 'light') : settings.theme;
+  const palette = THEMES[settings.colorTheme] || THEMES.violet;
+  const useCustom = settings.colorTheme === 'custom' && settings.customColors;
+  const accent = useCustom ? settings.customColors!.primary : palette.primary;
+  const accent2 = useCustom ? settings.customColors!.secondary : palette.secondary;
 
-  // Selection Colors
-  const selectionBg = primary;
-  const selectionText = '#ffffff';
+  // Layout effect: tokens are in place before the first paint (index.html pre-sets the mode even earlier)
+  useLayoutEffect(() => {
+    const root = document.documentElement;
+    root.dataset.mode = mode;
+    root.style.setProperty('--accent-src', accent);
+    root.style.setProperty('--accent2-src', accent2);
+    root.classList.toggle('mica', !!window.resonaWindow);
+  }, [mode, accent, accent2]);
 
-  return (
-  <style>{`
-    :root {
-      --bg-app: ${bgApp};
-      --bg-surface: ${bgSurface};
-      --bg-panel: ${bgPanel};
-      --border-color: ${borderColor};
-      --text-main: ${textMain};
-      --text-muted: ${textMuted};
-      --col-primary: ${primary};
-      --col-primary-hover: ${primaryHover};
-      --col-secondary: ${secondary};
-      --col-danger: ${isDark ? '#ef4444' : '#fa5252'};
-    }
-    ::selection {
-      background-color: ${selectionBg};
-      color: ${selectionText};
-    }
-    .shadow-soft {
-      box-shadow: ${isDark ? '0 4px 6px -1px rgba(0, 0, 0, 0.3)' : '0 1px 3px rgba(0,0,0,0.05), 0 5px 15px rgba(0,0,0,0.02)'};
-    }
-    .custom-scrollbar::-webkit-scrollbar-thumb {
-      background-color: ${isDark ? '#3f3f46' : '#ced4da'};
-    }
-    .custom-scrollbar::-webkit-scrollbar-track {
-      background-color: transparent;
-    }
-    .drop-shadow-glow {
-        filter: drop-shadow(0 0 8px rgba(var(--col-primary), 0.5));
-    }
-  `}</style>
-)};
+  // Mica tint and the native caption buttons follow the chosen source
+  useEffect(() => { window.resonaWindow?.setTheme(settings.theme); }, [settings.theme]);
+};
 
 // Helper for consistent date keys (YYYY-MM-DD Local)
 const getLocalISODate = (d: Date = new Date()) => {
@@ -214,21 +185,16 @@ const SettingsForm: React.FC<{ settings: AppSettings; stats: UserStats; onSave: 
     <div className="space-y-8">
       {/* Theme Section */}
       <section>
-        <h3 className="text-xs font-bold uppercase tracking-wider text-text-muted mb-4">Appearance</h3>
+        <h3 className="text-[15px] font-semibold text-text mb-3">Appearance</h3>
         <div className="space-y-4">
-            <div className="flex gap-4">
-                <button 
-                    onClick={() => setLocalSettings({...localSettings, theme: 'light'})}
-                    className={`flex-1 p-3 rounded-lg border text-sm font-medium flex items-center justify-center gap-2 transition-colors ${localSettings.theme === 'light' ? 'bg-primary text-white border-primary' : 'bg-surface border-border text-text'}`}
-                >
-                    <Sun size={16} /> Light
-                </button>
-                <button 
-                    onClick={() => setLocalSettings({...localSettings, theme: 'dark'})}
-                    className={`flex-1 p-3 rounded-lg border text-sm font-medium flex items-center justify-center gap-2 transition-colors ${localSettings.theme === 'dark' ? 'bg-primary text-white border-primary' : 'bg-surface border-border text-text'}`}
-                >
-                    <Moon size={16} /> Dark
-                </button>
+            <div className="flex items-center justify-between">
+                <span className="text-[13px] text-text">Color mode</span>
+                <Segmented
+                    label="Color mode"
+                    value={localSettings.theme}
+                    onChange={(theme) => setLocalSettings({...localSettings, theme})}
+                    options={[{ value: 'system', label: 'System' }, { value: 'light', label: 'Light' }, { value: 'dark', label: 'Dark' }]}
+                />
             </div>
 
             <div>
@@ -243,7 +209,7 @@ const SettingsForm: React.FC<{ settings: AppSettings; stats: UserStats; onSave: 
                                 key={themeKey}
                                 onClick={() => !isLocked && setLocalSettings({...localSettings, colorTheme: themeKey})}
                                 className={`w-8 h-8 rounded-full border-2 transition-all relative group flex items-center justify-center ${localSettings.colorTheme === themeKey ? 'border-text scale-110' : 'border-transparent'} ${isLocked ? 'opacity-50 cursor-not-allowed grayscale' : 'hover:scale-110'}`}
-                                style={{ backgroundColor: theme.primary }}
+                                style={{ backgroundColor: `oklch(from ${theme.primary} 0.6 min(c, 0.16) h)` }}
                                 title={isLocked ? `Unlocks at Lvl ${theme.unlockLevel}` : theme.name}
                             >
                                 {isLocked && <Lock size={12} className="text-white drop-shadow-md" />}
@@ -290,34 +256,9 @@ const SettingsForm: React.FC<{ settings: AppSettings; stats: UserStats; onSave: 
         </div>
       </section>
 
-      {/* Mode Section */}
-      <section>
-        <h3 className="text-xs font-bold uppercase tracking-wider text-text-muted mb-4">Training Mode</h3>
-        <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-                <button 
-                    onClick={() => setLocalSettings({...localSettings, planMode: 'structured'})}
-                    className={`p-4 rounded-xl border text-left transition-all ${localSettings.planMode === 'structured' ? 'bg-primary/10 border-primary ring-1 ring-primary' : 'bg-surface border-border hover:border-primary/50'}`}
-                >
-                    <div className={`mb-2 ${localSettings.planMode === 'structured' ? 'text-primary' : 'text-text-muted'}`}><Blocks size={20} /></div>
-                    <div className="font-bold text-sm text-text">Guided Routine</div>
-                    <div className="text-[10px] text-text-muted mt-1">Timed blocks & prompts</div>
-                </button>
-                <button 
-                    onClick={() => setLocalSettings({...localSettings, planMode: 'simple'})}
-                    className={`p-4 rounded-xl border text-left transition-all ${localSettings.planMode === 'simple' ? 'bg-primary/10 border-primary ring-1 ring-primary' : 'bg-surface border-border hover:border-primary/50'}`}
-                >
-                    <div className={`mb-2 ${localSettings.planMode === 'simple' ? 'text-primary' : 'text-text-muted'}`}><FileText size={20} /></div>
-                    <div className="font-bold text-sm text-text">Simple Plan</div>
-                    <div className="text-[10px] text-text-muted mt-1">Free text editor & timer</div>
-                </button>
-            </div>
-        </div>
-      </section>
-
       {/* Progression Section */}
       <section>
-        <h3 className="text-xs font-bold uppercase tracking-wider text-text-muted mb-4">Progression</h3>
+        <h3 className="text-[15px] font-semibold text-text mb-3">Progression</h3>
         <div className="flex items-center justify-between p-4 rounded-xl border border-border bg-background/50">
              <div className="flex items-center gap-3">
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center ${localSettings.disableLeveling ? 'bg-yellow-500/20 text-yellow-500' : 'bg-surface text-text-muted'}`}>
@@ -339,7 +280,7 @@ const SettingsForm: React.FC<{ settings: AppSettings; stats: UserStats; onSave: 
 
       {/* Schedule Section */}
       <section>
-        <h3 className="text-xs font-bold uppercase tracking-wider text-text-muted mb-4">Training Schedule</h3>
+        <h3 className="text-[15px] font-semibold text-text mb-3">Training Schedule</h3>
         <div className="p-4 rounded-xl border border-border bg-background/50">
             <p className="text-xs text-text-muted mb-3">Select your target training days. Off days will not break your streak.</p>
             <div className="flex justify-between gap-1">
@@ -349,7 +290,7 @@ const SettingsForm: React.FC<{ settings: AppSettings; stats: UserStats; onSave: 
                         <button
                             key={day}
                             onClick={() => toggleDay(i)}
-                            className={`flex-1 aspect-square rounded flex items-center justify-center text-xs font-bold transition-all ${isActive ? 'bg-primary text-white shadow-sm' : 'bg-surface border border-border text-text-muted hover:bg-white/5'}`}
+                            className={`flex-1 aspect-square rounded flex items-center justify-center text-xs font-bold transition-all ${isActive ? 'bg-primary text-on-primary shadow-sm' : 'bg-surface border border-border text-text-muted hover:bg-white/5'}`}
                         >
                             {day[0]}
                         </button>
@@ -361,7 +302,7 @@ const SettingsForm: React.FC<{ settings: AppSettings; stats: UserStats; onSave: 
 
       {/* Audio & Workflow Section */}
       <section>
-        <h3 className="text-xs font-bold uppercase tracking-wider text-text-muted mb-4">Hardware & Workflow</h3>
+        <h3 className="text-[15px] font-semibold text-text mb-3">Hardware & Workflow</h3>
         <div className="space-y-4 p-4 rounded-xl border border-border bg-background/50">
           <div className="space-y-1">
             <label className="text-xs font-medium text-text-muted">Input Device</label>
@@ -469,7 +410,7 @@ const SettingsForm: React.FC<{ settings: AppSettings; stats: UserStats; onSave: 
 
       {/* System Section */}
       <section>
-          <h3 className="text-xs font-bold uppercase tracking-wider text-text-muted mb-4">System</h3>
+          <h3 className="text-[15px] font-semibold text-text mb-3">System</h3>
           <div className="flex flex-col gap-3">
             <Button 
                 variant="outline" 
@@ -508,22 +449,23 @@ const SessionFocusBlock: React.FC<{ focusText: string; onUpdate: (text: string) 
     };
 
     return (
-        <div className={`bg-surface rounded-2xl border border-white/5 p-4 shadow-soft flex flex-col gap-2 relative group w-full transition-all duration-300 ${compact ? 'h-32' : 'min-h-[8rem]'}`}>
-            <div className="flex justify-between items-center mb-1 shrink-0">
-                <h3 className="text-xs font-bold uppercase tracking-widest text-text-muted flex items-center gap-2">
-                    <Zap size={14} className="text-yellow-500" /> Session Focus
-                </h3>
+        <section className="w-full">
+            <div className="flex items-baseline justify-between mb-1.5">
+                <h2 className="text-[13px] font-semibold text-text">Focus</h2>
                 {!isEditing && !isReadOnly && (
-                    <button onClick={() => setIsEditing(true)} className="text-text-muted hover:text-text opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Edit3 size={14} />
+                    <button
+                        onClick={() => { setTempText(focusText); setIsEditing(true); }}
+                        className="text-[12.5px] text-text-muted hover:text-text transition-colors"
+                    >
+                        Edit
                     </button>
                 )}
             </div>
-            
+
             {isEditing ? (
-                <div className="flex flex-col gap-2 w-full h-full">
-                    <textarea 
-                        className="w-full bg-black/20 rounded p-2 text-sm text-text outline-none resize-none focus:ring-1 focus:ring-primary/50 border border-white/5 flex-1"
+                <div className="flex flex-col gap-2 w-full">
+                    <textarea
+                        className="w-full min-h-[6rem] bg-surface rounded-lg px-3 py-2 text-[13.5px] leading-relaxed text-text outline-none resize-y border border-border-strong focus:border-primary transition-colors"
                         value={tempText}
                         onChange={(e) => setTempText(e.target.value)}
                         autoFocus
@@ -534,11 +476,11 @@ const SessionFocusBlock: React.FC<{ focusText: string; onUpdate: (text: string) 
                     </div>
                 </div>
             ) : (
-                <div className={`w-full text-sm text-text leading-relaxed whitespace-pre-wrap italic opacity-90 overflow-y-auto custom-scrollbar ${compact ? 'h-full' : 'max-h-32'}`}>
-                    {focusText || "Set a focus for your practice sessions..."}
-                </div>
+                <p className={`text-[13.5px] text-text-muted leading-relaxed whitespace-pre-wrap overflow-y-auto ${compact ? 'max-h-24' : 'max-h-40'}`}>
+                    {focusText || "Write down what to keep in mind while you train."}
+                </p>
             )}
-        </div>
+        </section>
     );
 };
 
@@ -566,11 +508,7 @@ const App: React.FC = () => {
   const [updateAvailable, setUpdateAvailable] = useState<UpdateInfo | null>(null);
 
   // Modals & UI State
-  const [showSettings, setShowSettings] = useState(false);
-  const [showRecordings, setShowRecordings] = useState(false);
-  const [showSickDay, setShowSickDay] = useState(false);
-  const [showAnalytics, setShowAnalytics] = useState(false);
-  const [showHistory, setShowHistory] = useState(false);
+  const [page, setPage] = useState<Page>('today');
   const [showWelcome, setShowWelcome] = useState(false);
   const [showLevelModal, setShowLevelModal] = useState(false);
   
@@ -665,14 +603,12 @@ const App: React.FC = () => {
   // --- Navigation Helpers ---
   const jumpToSession = (sessionId: string) => {
       setHighlightedSessionId(sessionId);
-      setShowHistory(true);
-      setShowRecordings(false); // Close others
+      setPage('progress');
   };
 
   const jumpToRecording = (recordingId: string) => {
       setHighlightedRecordingId(recordingId);
-      setShowRecordings(true);
-      setShowHistory(false); // Close others
+      setPage('progress');
   };
 
   // --- Session Flow ---
@@ -943,7 +879,6 @@ const App: React.FC = () => {
       const newSickDays: { [key: string]: boolean } = {};
       days.forEach(d => newSickDays[d] = true);
       setStats({...stats, sickDays: newSickDays});
-      setShowSickDay(false);
   };
 
   // Delete Session
@@ -1035,253 +970,261 @@ const App: React.FC = () => {
       window.location.reload();
   };
 
-  // UI Components mapping
+  // --- LAYOUT ---
+  useAppearance(settings);
   const isTraining = appState === AppState.TRAINING;
+  const isStructured = settings.planMode === 'structured';
+  const routineBlocks = settings.currentRoutine.blocks;
+  const routineIsEmpty = isStructured && routineBlocks.length === 0;
+  const routineMinutes =Math.round(routineBlocks.reduce((a, b) => a + b.duration, 0) / 60);
+  const dateLabel = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+  const titleStatus = isTraining ? 'Training' : (statusMessage === 'Ready' ? undefined : statusMessage);
+
+  const navigate = (p: Page) => {
+      setPage(p);
+      setHighlightedSessionId(null);
+      setHighlightedRecordingId(null);
+  };
+
+  const todayPage = (
+    <PageFrame title="Today" aside={<span className="text-[13px] text-text-muted">{dateLabel}</span>}>
+      <div className="flex items-center justify-between gap-6 py-5 border-y border-border">
+        <div className="min-w-0">
+          <div className="text-[17px] font-semibold tracking-[-0.01em] truncate">
+            {isStructured ? settings.currentRoutine.name : 'Free session'}
+          </div>
+          <div className="text-[13px] text-text-muted mt-0.5">
+            {!isStructured
+              ? 'Stopwatch with live pitch and recording'
+              : routineIsEmpty
+                ? 'No exercises yet. Add some in Routines to start.'
+                : <><span className="font-mono tabular-nums">{routineBlocks.length}</span> exercises · <span className="font-mono tabular-nums">{routineMinutes}</span> min</>}
+          </div>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <Button variant="ghost" onClick={() => navigate('routines')}>{routineIsEmpty ? 'Add exercises' : 'Change'}</Button>
+          <Button size="lg" onClick={initiateSession} disabled={routineIsEmpty} className="min-w-[132px]">Start session</Button>
+        </div>
+      </div>
+
+      {isStructured && routineBlocks.length > 0 && (
+        <motion.ol
+          className="mt-2"
+          initial="hidden"
+          animate="shown"
+          variants={{ shown: { transition: { staggerChildren: 0.03 } } }}
+        >
+          {routineBlocks.map((b, i) => (
+            <motion.li
+              key={b.id}
+              variants={{ hidden: { opacity: 0, y: 4 }, shown: { opacity: 1, y: 0, transition: { duration: 0.2, ease: EASE_OUT } } }}
+              className="grid grid-cols-[1.75rem_1fr_auto] items-baseline gap-2 py-2.5 border-b border-border text-[13.5px]"
+            >
+              <span className="font-mono tabular-nums text-[12px] text-text-muted">{i + 1}</span>
+              <span className="truncate">{b.title}</span>
+              <span className="font-mono tabular-nums text-[12.5px] text-text-muted">
+                {b.duration === 0 ? 'open' : formatTime(b.duration)}
+              </span>
+            </motion.li>
+          ))}
+        </motion.ol>
+      )}
+
+      <div className="mt-10">
+        <SessionFocusBlock
+          focusText={settings.sessionFocus}
+          onUpdate={(txt) => setSettings(s => ({...s, sessionFocus: txt}))}
+        />
+      </div>
+    </PageFrame>
+  );
+
+  const trainingView = (
+    <div className="h-full flex flex-col gap-4 p-6">
+      <div className="flex-1 min-h-0">
+        {isStructured ? (
+          <SessionPlayer 
+              routine={settings.currentRoutine} 
+              onComplete={finishWorkout} 
+              onStop={finishWorkout} 
+              onPauseChange={setPaused}
+              beepVolume={settings.beepVolume}
+          />
+        ) : (
+          <div className="h-full flex flex-col gap-4">
+              <div className="flex justify-between items-baseline shrink-0">
+                  <h1 className="text-[22px] font-semibold tracking-[-0.02em]">Free session</h1>
+                  <div className="text-3xl font-mono tabular-nums">{formatTime(sessionDuration)}</div>
+              </div>
+              <div className="flex-1 min-h-0 rounded-2xl border border-border overflow-hidden">
+                  <PlanEditor 
+                      plan={settings.simplePlanText} 
+                      fontSize={settings.planFontSize}
+                      isTraining={true}
+                      onSave={() => {}}
+                      onFontSizeChange={(s) => setSettings(prev => ({...prev, planFontSize: s}))}
+                  />
+              </div>
+              <div className="shrink-0 flex justify-center gap-3">
+                  <Button variant="secondary" size="lg" onClick={() => setPaused(!simpleModePaused)} className="min-w-[110px]">
+                      {simpleModePaused ? 'Resume' : 'Pause'}
+                  </Button>
+                  <Button variant="danger" size="lg" onClick={finishWorkout} className="min-w-[110px]">
+                      End session
+                  </Button>
+              </div>
+          </div>
+        )}
+      </div>
+      <div className="h-[260px] shrink-0 grid grid-cols-2 gap-4">
+        <PitchTracker 
+            isActive={true} 
+            targetPitch={settings.targetPitch} 
+            onTargetChange={(val) => setSettings({...settings, targetPitch: val})} 
+            livePitchData={livePitchData} 
+        />
+        <AudioVisualizer />
+      </div>
+    </div>
+  );
+
+  const progressPage = (
+    <PageFrame title="Progress" wide>
+      <Section title="Overview">
+        <AnalyticsDashboard stats={stats} recordings={recordings} settings={settings} sessions={sessions} />
+      </Section>
+      <Section title="Voice health">
+        <div className="h-52"><VocalHealthChart sessions={sessions} stats={stats} /></div>
+      </Section>
+      <Section title="Sessions">
+        <SessionHistory 
+            sessions={sessions} 
+            onUpdateSession={(s) => setSessions(prev => prev.map(old => old.id === s.id ? s : old))} 
+            onDeleteSession={handleDeleteSession} 
+            onBulkDelete={handleBulkDeleteSessions}
+            highlightedId={highlightedSessionId}
+            onJumpToRecording={jumpToRecording}
+        />
+      </Section>
+      <Section title="Recordings">
+        <RecordingsManager 
+            recordings={recordings} 
+            onDelete={handleDeleteRecording} 
+            highlightedId={highlightedRecordingId}
+            onJumpToSession={jumpToSession}
+            sessions={sessions}
+        />
+      </Section>
+      <Section title="Goals and achievements">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="min-h-[300px]">
+            <GoalsWidget 
+                goals={goals} 
+                onAddGoal={g => setGoals(p => [...p, g])} 
+                onRemoveGoal={id => setGoals(p => p.filter(g => g.id !== id))} 
+                onClaimGoal={handleClaimGoal}
+                onDeleteHistoryEntry={handleDeleteHistoryEntry}
+                stats={stats}
+            />
+          </div>
+          <AchievementsWidget unlockedIds={stats.unlockedAchievements} />
+        </div>
+      </Section>
+      <Section title="Rest days">
+        <p className="text-[13.5px] text-text-muted mb-4 max-w-prose">Mark days you rested because you were ill or your voice was tired. Rest days never break your streak.</p>
+        <div className="max-w-md">
+          <CustomCalendar 
+              initialSelectedDates={stats.sickDays} 
+              onSave={(days) => { handleSaveSickDays(days); setStatusMessage('Rest days saved'); }} 
+              onCancel={() => {}} 
+          />
+        </div>
+      </Section>
+    </PageFrame>
+  );
+
+  const routinesPage = (
+    <PageFrame
+      title="Routines"
+      fill
+      aside={
+        <Segmented
+          label="Session type"
+          value={settings.planMode}
+          onChange={(planMode) => setSettings(s => ({...s, planMode}))}
+          options={[{ value: 'structured', label: 'Guided routine' }, { value: 'simple', label: 'Simple plan' }]}
+        />
+      }
+    >
+      <div className="h-full min-h-[360px] overflow-hidden">
+        {isStructured ? (
+          <RoutineEditor 
+              routine={settings.currentRoutine} 
+              onUpdate={(r) => setSettings(s => ({...s, currentRoutine: r}))} 
+          />
+        ) : (
+          <PlanEditor 
+              plan={settings.simplePlanText} 
+              fontSize={settings.planFontSize}
+              isTraining={false}
+              onSave={(txt) => setSettings(s => ({...s, simplePlanText: txt}))}
+              onFontSizeChange={(sz) => setSettings(s => ({...s, planFontSize: sz}))}
+          />
+        )}
+      </div>
+    </PageFrame>
+  );
+
+  const settingsPage = (
+    <PageFrame title="Settings" narrow>
+      <SettingsForm settings={settings} stats={stats} onSave={(s) => { setSettings(s); setStatusMessage('Settings saved'); }} onReset={handleResetApp} appVersion={appVersion} />
+    </PageFrame>
+  );
+
+  const pages: Record<Page, React.ReactNode> = {
+    today: todayPage,
+    progress: progressPage,
+    routines: routinesPage,
+    settings: settingsPage,
+  };
 
   return (
-    <>
-    <GlobalStyles theme={settings.colorTheme} mode={settings.theme} customColors={settings.customColors} />
-    <div className="h-screen w-full flex bg-background text-text overflow-hidden selection:bg-primary/30 selection:text-white transition-colors duration-300 font-sans">
-      
-      {/* Sidebar - Compact */}
-      <nav className="w-16 bg-surface border-r border-border flex flex-col items-center py-4 gap-4 z-50 shrink-0">
-        <div className="w-10 h-10 bg-gradient-to-br from-primary to-secondary rounded-xl flex items-center justify-center shadow-lg shadow-primary/20 mb-2 shrink-0">
-           <Mic size={20} className="text-white" />
-        </div>
+    <MotionConfig reducedMotion="user">
+    {/* Nav layer (tinted Mica in Electron); the content pane below sits raised on it */}
+    <div className="h-full flex flex-col text-text bg-sidebar">
+      <TitleBar status={titleStatus} />
 
-        <NavButton icon={<LayoutDashboard size={20} />} active={!showAnalytics && !showHistory} onClick={() => {setShowAnalytics(false); setShowHistory(false); setShowRecordings(false);}} tooltip="Dashboard" />
-        <NavButton icon={<BarChart2 size={20} />} active={showAnalytics} onClick={() => setShowAnalytics(true)} tooltip="Analytics" />
-        <NavButton icon={<History size={20} />} active={showHistory} onClick={() => setShowHistory(true)} tooltip="History" />
-        <NavButton icon={<FolderOpen size={20} />} active={showRecordings} onClick={() => setShowRecordings(true)} tooltip="Recordings" />
-        
-        <div className="flex-1" />
-        <NavButton icon={<ThermometerSnowflake size={20} />} onClick={() => setShowSickDay(true)} tooltip="Sick Days" />
-        <NavButton icon={<SettingsIcon size={20} />} onClick={() => setShowSettings(true)} tooltip="Settings" />
-      </nav>
+      <div className="flex-1 flex min-h-0">
+        <Sidebar
+          page={page}
+          onNavigate={navigate}
+          disabled={isTraining}
+          streak={stats.currentStreak}
+          level={stats.level}
+          levelProgress={levelProgress}
+          showLevel={!settings.disableLeveling}
+          xpMultiplier={dailyXpBonus}
+          onOpenLevel={() => setShowLevelModal(true)}
+          updateVersion={updateAvailable?.TargetFullRelease.Version}
+          onUpdate={handleUpdateClick}
+        />
 
-      {/* Main Content */}
-      <main className="flex-1 flex flex-col min-w-0 h-full relative bg-background">
-        {/* Header */}
-        <header className="h-14 flex items-center justify-between px-6 border-b border-border bg-surface/50 backdrop-blur-sm shrink-0 z-40">
-           <div className="flex items-center gap-4">
-              <div className="flex flex-col">
-                 <h1 className="font-bold text-sm leading-tight tracking-tight text-text">Resona <span className="text-primary text-xs align-top">v{appVersion}</span></h1>
-                 <span className="text-[10px] font-mono text-text-muted uppercase tracking-widest">{statusMessage}</span>
-              </div>
-           </div>
-           
-           <div className="flex items-center gap-4">
-               {/* Update Notification Banner */}
-               {updateAvailable && (
-                   <button 
-                        onClick={handleUpdateClick}
-                        className="bg-emerald-500/10 border border-emerald-500/50 text-emerald-500 px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-2 hover:bg-emerald-500 hover:text-white transition-all animate-pulse"
-                   >
-                       <ArrowUpCircle size={14} /> Update Found
-                   </button>
-               )}
+        {/* Content pane: one raised surface with a concentric top-left corner, like Windows Settings */}
+        <main className="flex-1 min-w-0 relative bg-background rounded-tl-[10px] border-l border-t border-border overflow-hidden">
+          <AnimatePresence initial={false}>
+            <motion.div
+              key={isTraining ? 'session' : page}
+              className="absolute inset-0 overflow-y-auto"
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0, transition: { duration: 0.2, ease: EASE_OUT } }}
+              exit={{ opacity: 0, transition: { duration: 0.16, ease: EASE_OUT } }}
+            >
+              {isTraining ? trainingView : pages[page]}
+            </motion.div>
+          </AnimatePresence>
+        </main>
+      </div>
 
-               {/* XP Event Indicator */}
-               {dailyXpBonus > 1 && !settings.disableLeveling && (
-                   <div className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-bold animate-pulse border ${
-                       dailyXpBonus >= 5 ? 'bg-purple-500/10 text-purple-500 border-purple-500/20 shadow-[0_0_10px_rgba(168,85,247,0.3)]' :
-                       dailyXpBonus >= 3 ? 'bg-orange-500/10 text-orange-500 border-orange-500/20' :
-                       'bg-yellow-500/10 text-yellow-500 border-yellow-500/20'
-                   }`}>
-                       <Flame size={12} className="fill-current" /> {dailyXpBonus}X XP
-                   </div>
-               )}
-
-               {/* Level Bar - Hidden if Disabled */}
-               {!settings.disableLeveling && (
-                   <button 
-                        onClick={() => setShowLevelModal(true)}
-                        className="flex items-center gap-4 bg-surface rounded-full p-1 pr-4 border border-border shadow-sm group relative cursor-pointer hover:bg-surface-highlight transition-colors"
-                   >
-                      <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-[10px]">
-                        {stats.level}
-                      </div>
-                      <div className="flex flex-col gap-0.5 w-20">
-                        <div className="flex justify-between text-[8px] text-text-muted">
-                            <span>LVL</span>
-                            <span>{Math.floor(levelProgress)}%</span>
-                        </div>
-                        <div className="h-1 bg-border rounded-full overflow-hidden">
-                            <div className="h-full bg-primary transition-all duration-500" style={{ width: `${levelProgress}%` }} />
-                        </div>
-                      </div>
-                   </button>
-               )}
-           </div>
-        </header>
-
-        {/* --- DYNAMIC CONTENT AREA --- */}
-        <div className={`w-full h-full p-4 overflow-hidden relative flex flex-col`}>
-           
-           <div className={`w-full h-full grid grid-cols-1 xl:grid-cols-12 gap-4 ${!isTraining ? 'overflow-y-auto custom-scrollbar pr-2' : ''}`}>
-              
-              {/* --- LEFT COL --- */}
-              <div className={`xl:col-span-8 flex flex-col gap-4 h-full min-h-0`}>
-                 
-                 {/* 1. MAIN ACTION / DASHBOARD AREA */}
-                 {isTraining ? (
-                    settings.planMode === 'structured' ? (
-                        <div className="flex-1 min-h-0">
-                            <SessionPlayer 
-                                routine={settings.currentRoutine} 
-                                onComplete={finishWorkout} 
-                                onStop={finishWorkout}
-                                onPauseChange={setPaused}
-                                beepVolume={settings.beepVolume}
-                            />
-                        </div>
-                    ) : (
-                        // Simple Mode Training
-                        <div className="flex-1 flex flex-col h-full bg-surface rounded-2xl border border-border p-4 relative overflow-hidden shadow-sm gap-4">
-                            <div className="flex justify-between items-center shrink-0">
-                                <h2 className="text-xl font-bold flex items-center gap-2 text-text"><Clock className="text-primary" /> Free Training</h2>
-                                <div className="text-3xl font-mono font-bold text-text tabular-nums">{formatTime(sessionDuration)}</div>
-                            </div>
-                            
-                            <div className="flex-1 min-h-0 bg-background/50 rounded-xl border border-border overflow-hidden">
-                                <PlanEditor 
-                                    plan={settings.simplePlanText} 
-                                    fontSize={settings.planFontSize}
-                                    isTraining={true}
-                                    onSave={() => {}}
-                                    onFontSizeChange={(s) => setSettings(prev => ({...prev, planFontSize: s}))}
-                                />
-                            </div>
-                            
-                            <div className="shrink-0 flex justify-center gap-4">
-                                <Button variant={simpleModePaused ? 'primary' : 'secondary'} size="lg" onClick={() => setPaused(!simpleModePaused)}>
-                                    {simpleModePaused ? <Play size={24} /> : <Pause size={24} />}
-                                </Button>
-                                <Button variant="danger" size="lg" onClick={finishWorkout} className="w-32 text-xs font-bold whitespace-normal leading-tight">
-                                    Stop Session
-                                </Button>
-                            </div>
-                        </div>
-                    )
-                 ) : (
-                    // DASHBOARD (IDLE) - Maximize Space
-                    <div className="flex flex-col gap-4 h-full">
-                        {/* Top Summary Bar - Compact */}
-                        <div className="flex gap-4 h-28 shrink-0">
-                            {/* Start Card - Wide */}
-                            <div className="flex-1 bg-gradient-to-br from-surface to-background border border-border rounded-2xl p-4 flex justify-between items-center shadow-soft relative overflow-hidden group">
-                                <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-                                <div className="flex flex-col justify-center relative z-10">
-                                    <h2 className="text-2xl font-black mb-1 text-text">Ready to Train?</h2>
-                                    <p className="text-xs text-text-muted">{settings.planMode === 'structured' ? settings.currentRoutine.name : "Free-form Session"}</p>
-                                </div>
-                                <div className="relative z-10 w-40">
-                                    <Button size="lg" className="w-full text-base font-bold shadow-lg shadow-primary/25" onClick={initiateSession}>
-                                        <Play size={20} className="mr-2 fill-current" /> Start
-                                    </Button>
-                                </div>
-                            </div>
-
-                            {/* Mini Stats Summary - Compact Grid */}
-                            <div className="w-64 bg-surface rounded-2xl border border-white/5 p-3 flex flex-col justify-center gap-2">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-8 h-8 rounded bg-orange-500/20 flex items-center justify-center text-orange-500"><Flame size={16} /></div>
-                                    <div className="leading-tight"><div className="text-lg font-bold text-text">{stats.currentStreak}</div><div className="text-[9px] text-text-muted uppercase">Streak</div></div>
-                                </div>
-                                <div className="flex items-center gap-3">
-                                    <div className="w-8 h-8 rounded bg-blue-500/20 flex items-center justify-center text-blue-500"><Clock size={16} /></div>
-                                    <div className="leading-tight"><div className="text-lg font-bold text-text">{Math.floor(stats.totalTrainingTime / 60)}</div><div className="text-[9px] text-text-muted uppercase">Mins</div></div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Middle Row: Focus Block (Dynamic Height) */}
-                        <div className="shrink-0">
-                             <SessionFocusBlock 
-                                focusText={settings.sessionFocus}
-                                onUpdate={(txt) => setSettings(s => ({...s, sessionFocus: txt}))} 
-                            />
-                        </div>
-
-                        {/* Bottom: Plan Editor - Expanded */}
-                        <div className="flex-1 min-h-0 overflow-hidden rounded-2xl border border-border shadow-soft bg-surface">
-                            {settings.planMode === 'structured' ? (
-                                <RoutineEditor 
-                                    routine={settings.currentRoutine} 
-                                    onUpdate={(r) => setSettings({...settings, currentRoutine: r})} 
-                                />
-                            ) : (
-                                <PlanEditor 
-                                    plan={settings.simplePlanText} 
-                                    fontSize={settings.planFontSize}
-                                    isTraining={false}
-                                    onSave={(txt) => setSettings({...settings, simplePlanText: txt})}
-                                    onFontSizeChange={(s) => setSettings({...settings, planFontSize: s})}
-                                />
-                            )}
-                        </div>
-                    </div>
-                 )}
-                 
-                 {/* 2. VISUALIZER ROW (Only in Training Mode) */}
-                 {isTraining && (
-                    <div className="flex-1 min-h-[200px] max-h-[350px] shrink-0">
-                        <div className="grid grid-cols-2 gap-4 h-full">
-                            <PitchTracker 
-                                isActive={true} 
-                                targetPitch={settings.targetPitch} 
-                                onTargetChange={(val) => setSettings({...settings, targetPitch: val})} 
-                                livePitchData={livePitchData} 
-                            />
-                            <AudioVisualizer />
-                        </div>
-                    </div>
-                 )}
-
-              </div>
-
-              {/* --- RIGHT COL: Always Visible (Expanded) --- */}
-              <div className={`xl:col-span-4 flex flex-col gap-4 h-full overflow-y-auto custom-scrollbar`}>
-                    
-                    {/* Vocal Health Chart Moved to Right Col Top */}
-                    <div className="bg-surface rounded-2xl border border-border p-4 shadow-soft relative group shrink-0 h-52">
-                        <VocalHealthChart sessions={sessions} stats={stats} />
-                    </div>
-
-                    {!isTraining && (
-                        <AchievementsWidget unlockedIds={stats.unlockedAchievements} />
-                    )}
-                    
-                    {/* Active Session: Show Focus Block Here */}
-                    {isTraining && (
-                        <div className="shrink-0">
-                            <SessionFocusBlock 
-                                focusText={settings.sessionFocus} 
-                                onUpdate={() => {}} 
-                                isReadOnly={true}
-                                compact={true}
-                            />
-                        </div>
-                    )}
-
-                    <div className="flex-1 min-h-[300px]">
-                        <GoalsWidget 
-                            goals={goals} 
-                            onAddGoal={g => setGoals(p => [...p, g])} 
-                            onRemoveGoal={id => setGoals(p => p.filter(g => g.id !== id))} 
-                            onClaimGoal={handleClaimGoal}
-                            onDeleteHistoryEntry={handleDeleteHistoryEntry}
-                            stats={stats}
-                        />
-                    </div>
-              </div>
-              
-           </div>
-        </div>
-      </main>
-
-      {/* --- MODALS & OVERLAYS --- */}
-      
       {appState === AppState.PRE_FLIGHT && (
         <PreFlightCheck 
             onReady={startWorkout} 
@@ -1296,93 +1239,45 @@ const App: React.FC = () => {
         <PostSessionModal onSave={saveSessionLog} />
       )}
 
-      <Modal isOpen={showAnalytics} onClose={() => setShowAnalytics(false)} title="Analytics" width="max-w-6xl">
-        <AnalyticsDashboard stats={stats} recordings={recordings} settings={settings} sessions={sessions} />
-      </Modal>
-
-      <Modal isOpen={showHistory} onClose={() => {setShowHistory(false); setHighlightedSessionId(null);}} title="History" width="max-w-4xl">
-        <SessionHistory 
-            sessions={sessions} 
-            onUpdateSession={(s) => setSessions(prev => prev.map(old => old.id === s.id ? s : old))} 
-            onDeleteSession={handleDeleteSession} 
-            onBulkDelete={handleBulkDeleteSessions}
-            highlightedId={highlightedSessionId}
-            onJumpToRecording={jumpToRecording}
-        />
-      </Modal>
-
-      <Modal isOpen={showSettings} onClose={() => setShowSettings(false)} title="Configuration" width="max-w-md">
-        <SettingsForm settings={settings} stats={stats} onSave={(s) => { setSettings(s); setShowSettings(false); }} onReset={handleResetApp} appVersion={appVersion} />
-      </Modal>
-
-      <Modal isOpen={showRecordings} onClose={() => {setShowRecordings(false); setHighlightedRecordingId(null);}} title="Recordings" width="max-w-5xl">
-        <RecordingsManager 
-            recordings={recordings} 
-            onDelete={handleDeleteRecording} 
-            highlightedId={highlightedRecordingId}
-            onJumpToSession={jumpToSession}
-            sessions={sessions}
-        />
-      </Modal>
-
-      <Modal isOpen={showSickDay} onClose={() => setShowSickDay(false)} title="Manage Sick Days" width="max-w-lg">
-        <div className="p-2">
-            <p className="text-sm text-text-muted mb-4">Mark days where you rested due to illness or vocal fatigue. These days won't break your streak.</p>
-            <CustomCalendar 
-                initialSelectedDates={stats.sickDays} 
-                onSave={handleSaveSickDays} 
-                onCancel={() => setShowSickDay(false)} 
-            />
-        </div>
-      </Modal>
-
-      <Modal isOpen={showWelcome} onClose={() => setShowWelcome(false)} title="Welcome to Resona!" width="max-w-lg">
-        <div className="p-2 space-y-4">
-            <div className="flex justify-center mb-4">
-                <div className="w-16 h-16 bg-gradient-to-br from-primary to-secondary rounded-2xl flex items-center justify-center shadow-lg shadow-primary/20">
-                    <Mic size={32} className="text-white" />
-                </div>
-            </div>
-            
-            <h3 className="text-lg font-bold text-center">Let's set up your training!</h3>
-            
-            <p className="text-sm text-text-muted leading-relaxed">
-                By default, <strong>no specific training days are selected</strong>. This means you can train whenever you want!
+      <Modal isOpen={showWelcome} onClose={() => setShowWelcome(false)} title="Welcome to Resona" width="max-w-md">
+        <div className="space-y-4 text-[13.5px] leading-relaxed">
+            <p className="text-text">Start a session from <strong className="font-semibold">Today</strong> whenever you're ready to train.</p>
+            <p className="text-text-muted">
+                No training days are set yet, so every day counts toward your streak. Pick your days in <strong className="font-semibold text-text">Settings</strong> and rest days in between won't break it.
             </p>
-            
-            <div className="bg-surface border border-white/5 p-4 rounded-xl flex gap-3">
-                <AlertTriangle className="text-yellow-500 shrink-0" size={20} />
-                <div className="text-xs text-text-muted">
-                    <strong className="text-text block mb-1">Tip: Set a Schedule</strong>
-                    Go to <strong className="text-primary">Settings</strong> to select your target practice days. This helps the streak counter know which days are "off days" so you don't lose your streak when resting!
-                </div>
-            </div>
-
-            <p className="text-sm text-text-muted leading-relaxed">
-                If you are ill, use the <strong>Sick Day</strong> button in the sidebar to mark the day. This preserves your streak without training.
+            <p className="text-text-muted">
+                Ill or your voice needs a break? Mark the day under <strong className="font-semibold text-text">Progress → Rest days</strong>.
             </p>
-
-            <Button className="w-full mt-4" onClick={() => setShowWelcome(false)}>Get Started</Button>
+            <div className="flex justify-end pt-2">
+                <Button onClick={() => setShowWelcome(false)}>Get started</Button>
+            </div>
         </div>
       </Modal>
 
       <LevelProgressModal isOpen={showLevelModal} onClose={() => setShowLevelModal(false)} stats={stats} />
-
     </div>
-    </>
+    </MotionConfig>
   );
 };
 
-const NavButton = ({ icon, onClick, active, tooltip }: any) => (
-    <button 
-        onClick={onClick}
-        className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-200 group relative ${active ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-text-muted hover:bg-white/5 hover:text-text'}`}
-    >
-        {icon}
-        <div className="absolute left-12 bg-surface border border-border px-2 py-1 rounded text-xs font-bold text-text opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 shadow-lg">
-            {tooltip}
-        </div>
-    </button>
+const EASE_OUT = [0.23, 1, 0.32, 1] as const;
+
+// Left-anchored next to the nav like Windows Settings; `fill` lets an editor take the pane's remaining height
+const PageFrame: React.FC<{ title: string; aside?: React.ReactNode; wide?: boolean; narrow?: boolean; fill?: boolean; children: React.ReactNode }> = ({ title, aside, wide, narrow, fill, children }) => (
+  <div className={`px-10 pt-7 ${fill ? 'h-full flex flex-col pb-6' : 'pb-16'} ${wide ? 'max-w-[1200px]' : narrow ? 'max-w-[760px]' : 'max-w-[1000px]'}`}>
+    <header className="flex items-end justify-between gap-6 mb-7 min-h-9 shrink-0">
+      <h1 className="text-[26px] font-semibold tracking-[-0.02em] leading-none">{title}</h1>
+      {aside}
+    </header>
+    {fill ? <div className="flex-1 min-h-0">{children}</div> : children}
+  </div>
+);
+
+const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
+  <section className="mt-10 first:mt-0 pt-8 first:pt-0 border-t first:border-t-0 border-border">
+    <h2 className="text-[15px] font-semibold mb-4">{title}</h2>
+    {children}
+  </section>
 );
 
 export default App;

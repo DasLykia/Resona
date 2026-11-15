@@ -1,0 +1,481 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-15T21:52:03.861Z",
+  "title": "Design System: Resona",
+  "extensions": {
+    "colorMeta": {
+      "primary": {
+        "role": "primary",
+        "displayName": "Theme Accent",
+        "canonical": "oklch(from var(--accent-src) 0.53 min(c, 0.16) h)",
+        "dark": "oklch(from var(--accent-src) 0.72 min(c, 0.16) h)",
+        "tonalRamp": [
+          "oklch(0.15 0.064 292.7)",
+          "oklch(0.27 0.112 292.7)",
+          "oklch(0.39 0.160 292.7)",
+          "oklch(0.51 0.160 292.7)",
+          "oklch(0.63 0.160 292.7)",
+          "oklch(0.75 0.160 292.7)",
+          "oklch(0.86 0.112 292.7)",
+          "oklch(0.95 0.064 292.7)"
+        ]
+      },
+      "primary-hover": {
+        "role": "primary",
+        "displayName": "Theme Accent Hover",
+        "canonical": "oklch(from var(--accent-src) 0.47 min(c, 0.16) h)",
+        "dark": "oklch(from var(--accent-src) 0.78 min(c, 0.16) h)",
+        "tonalRamp": [
+          "oklch(0.15 0.064 292.7)",
+          "oklch(0.27 0.112 292.7)",
+          "oklch(0.39 0.160 292.7)",
+          "oklch(0.51 0.160 292.7)",
+          "oklch(0.63 0.160 292.7)",
+          "oklch(0.75 0.160 292.7)",
+          "oklch(0.86 0.112 292.7)",
+          "oklch(0.95 0.064 292.7)"
+        ]
+      },
+      "on-primary": {
+        "role": "primary",
+        "displayName": "On Accent",
+        "canonical": "oklch(0.99 0 0)",
+        "dark": "oklch(from var(--accent-src) 0.2 0.03 h)",
+        "tonalRamp": [
+          "oklch(0.15 0.012 292.7)",
+          "oklch(0.27 0.021 292.7)",
+          "oklch(0.39 0.030 292.7)",
+          "oklch(0.51 0.030 292.7)",
+          "oklch(0.63 0.030 292.7)",
+          "oklch(0.75 0.030 292.7)",
+          "oklch(0.86 0.021 292.7)",
+          "oklch(0.95 0.012 292.7)"
+        ]
+      },
+      "secondary": {
+        "role": "secondary",
+        "displayName": "Second Source",
+        "canonical": "oklch(from var(--accent2-src) 0.56 min(c, 0.14) h)",
+        "dark": "oklch(from var(--accent2-src) 0.74 min(c, 0.13) h)",
+        "tonalRamp": [
+          "oklch(0.15 0.056 162.5)",
+          "oklch(0.27 0.098 162.5)",
+          "oklch(0.39 0.140 162.5)",
+          "oklch(0.51 0.140 162.5)",
+          "oklch(0.63 0.140 162.5)",
+          "oklch(0.75 0.140 162.5)",
+          "oklch(0.86 0.098 162.5)",
+          "oklch(0.95 0.056 162.5)"
+        ]
+      },
+      "danger": {
+        "role": "tertiary",
+        "displayName": "Danger Red",
+        "canonical": "oklch(0.55 0.19 25)",
+        "dark": "oklch(0.68 0.17 25)",
+        "tonalRamp": [
+          "oklch(0.15 0.076 25)",
+          "oklch(0.27 0.133 25)",
+          "oklch(0.39 0.190 25)",
+          "oklch(0.51 0.190 25)",
+          "oklch(0.63 0.190 25)",
+          "oklch(0.75 0.190 25)",
+          "oklch(0.86 0.133 25)",
+          "oklch(0.95 0.076 25)"
+        ]
+      },
+      "bg-app": {
+        "role": "neutral",
+        "displayName": "App Ground",
+        "canonical": "oklch(from var(--accent-src) 0.985 0.003 h)",
+        "dark": "oklch(from var(--accent-src) 0.2 0.006 h)",
+        "tonalRamp": [
+          "oklch(0.15 0.002 292.7)",
+          "oklch(0.27 0.004 292.7)",
+          "oklch(0.39 0.006 292.7)",
+          "oklch(0.51 0.006 292.7)",
+          "oklch(0.63 0.006 292.7)",
+          "oklch(0.75 0.006 292.7)",
+          "oklch(0.86 0.004 292.7)",
+          "oklch(0.95 0.002 292.7)"
+        ]
+      },
+      "bg-sidebar": {
+        "role": "neutral",
+        "displayName": "Nav Layer",
+        "canonical": "oklch(from var(--accent-src) 0.952 0.014 h)",
+        "dark": "oklch(from var(--accent-src) 0.165 0.012 h)",
+        "tonalRamp": [
+          "oklch(0.15 0.006 292.7)",
+          "oklch(0.27 0.010 292.7)",
+          "oklch(0.39 0.014 292.7)",
+          "oklch(0.51 0.014 292.7)",
+          "oklch(0.63 0.014 292.7)",
+          "oklch(0.75 0.014 292.7)",
+          "oklch(0.86 0.010 292.7)",
+          "oklch(0.95 0.006 292.7)"
+        ]
+      },
+      "bg-surface": {
+        "role": "neutral",
+        "displayName": "Raised Surface",
+        "canonical": "oklch(from var(--accent-src) 0.997 0.002 h)",
+        "dark": "oklch(from var(--accent-src) 0.245 0.008 h)",
+        "tonalRamp": [
+          "oklch(0.15 0.003 292.7)",
+          "oklch(0.27 0.006 292.7)",
+          "oklch(0.39 0.008 292.7)",
+          "oklch(0.51 0.008 292.7)",
+          "oklch(0.63 0.008 292.7)",
+          "oklch(0.75 0.008 292.7)",
+          "oklch(0.86 0.006 292.7)",
+          "oklch(0.95 0.003 292.7)"
+        ]
+      },
+      "bg-panel": {
+        "role": "neutral",
+        "displayName": "Panel",
+        "canonical": "oklch(from var(--accent-src) 0.945 0.007 h)",
+        "dark": "oklch(from var(--accent-src) 0.27 0.009 h)",
+        "tonalRamp": [
+          "oklch(0.15 0.004 292.7)",
+          "oklch(0.27 0.006 292.7)",
+          "oklch(0.39 0.009 292.7)",
+          "oklch(0.51 0.009 292.7)",
+          "oklch(0.63 0.009 292.7)",
+          "oklch(0.75 0.009 292.7)",
+          "oklch(0.86 0.006 292.7)",
+          "oklch(0.95 0.004 292.7)"
+        ]
+      },
+      "text-main": {
+        "role": "neutral",
+        "displayName": "Ink",
+        "canonical": "oklch(from var(--accent-src) 0.22 0.015 h)",
+        "dark": "oklch(from var(--accent-src) 0.95 0.006 h)",
+        "tonalRamp": [
+          "oklch(0.15 0.006 292.7)",
+          "oklch(0.27 0.010 292.7)",
+          "oklch(0.39 0.015 292.7)",
+          "oklch(0.51 0.015 292.7)",
+          "oklch(0.63 0.015 292.7)",
+          "oklch(0.75 0.015 292.7)",
+          "oklch(0.86 0.010 292.7)",
+          "oklch(0.95 0.006 292.7)"
+        ]
+      },
+      "text-muted": {
+        "role": "neutral",
+        "displayName": "Muted Ink",
+        "canonical": "oklch(from var(--accent-src) 0.48 0.014 h)",
+        "dark": "oklch(from var(--accent-src) 0.7 0.012 h)",
+        "tonalRamp": [
+          "oklch(0.15 0.006 292.7)",
+          "oklch(0.27 0.010 292.7)",
+          "oklch(0.39 0.014 292.7)",
+          "oklch(0.51 0.014 292.7)",
+          "oklch(0.63 0.014 292.7)",
+          "oklch(0.75 0.014 292.7)",
+          "oklch(0.86 0.010 292.7)",
+          "oklch(0.95 0.006 292.7)"
+        ]
+      },
+      "border-hairline": {
+        "role": "neutral",
+        "displayName": "Hairline",
+        "canonical": "oklch(from var(--accent-src) 0.25 0.03 h / 0.12)",
+        "dark": "oklch(from var(--accent-src) 0.97 0.02 h / 0.08)",
+        "tonalRamp": [
+          "oklch(0.15 0.012 292.7)",
+          "oklch(0.27 0.021 292.7)",
+          "oklch(0.39 0.030 292.7)",
+          "oklch(0.51 0.030 292.7)",
+          "oklch(0.63 0.030 292.7)",
+          "oklch(0.75 0.030 292.7)",
+          "oklch(0.86 0.021 292.7)",
+          "oklch(0.95 0.012 292.7)"
+        ]
+      },
+      "border-strong": {
+        "role": "neutral",
+        "displayName": "Strong Hairline",
+        "canonical": "oklch(from var(--accent-src) 0.25 0.03 h / 0.2)",
+        "dark": "oklch(from var(--accent-src) 0.97 0.02 h / 0.15)",
+        "tonalRamp": [
+          "oklch(0.15 0.012 292.7)",
+          "oklch(0.27 0.021 292.7)",
+          "oklch(0.39 0.030 292.7)",
+          "oklch(0.51 0.030 292.7)",
+          "oklch(0.63 0.030 292.7)",
+          "oklch(0.75 0.030 292.7)",
+          "oklch(0.86 0.021 292.7)",
+          "oklch(0.95 0.012 292.7)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "page-title": {
+        "displayName": "Page title",
+        "purpose": "One per page in the PageFrame header."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "The primary object on a page, e.g. the chosen routine name."
+      },
+      "section": {
+        "displayName": "Section",
+        "purpose": "Section headings and dialog titles."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "List rows, paragraphs, nav items."
+      },
+      "control": {
+        "displayName": "Control",
+        "purpose": "Button and segmented labels."
+      },
+      "caption": {
+        "displayName": "Caption",
+        "purpose": "Sidebar foot, title bar, secondary actions; muted."
+      },
+      "measure": {
+        "displayName": "Measure",
+        "purpose": "Geist Mono tabular figures for Hz, durations, counts, indices only."
+      }
+    },
+    "shadows": [
+      {
+        "name": "pop",
+        "value": "0 1px 2px oklch(0 0 0 / 0.06), 0 8px 24px -6px oklch(0 0 0 / 0.16)",
+        "dark": "0 1px 2px oklch(0 0 0 / 0.3), 0 12px 32px -8px oklch(0 0 0 / 0.55)",
+        "purpose": "Dialogs, popovers and menus only."
+      },
+      {
+        "name": "segment-lift",
+        "value": "0 1px 2px oklch(0 0 0 / 0.12)",
+        "purpose": "Selected segmented thumb in light mode; dark uses a 12% ink fill."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-out",
+        "value": "cubic-bezier(0.23, 1, 0.32, 1)",
+        "purpose": "Entrances and state changes."
+      },
+      {
+        "name": "ease-in-out",
+        "value": "cubic-bezier(0.65, 0, 0.35, 1)",
+        "purpose": "Elements moving on screen (nav indicator, segmented thumb)."
+      },
+      {
+        "name": "enter",
+        "value": "200ms",
+        "purpose": "Page, dialog and list-item entrances."
+      },
+      {
+        "name": "exit",
+        "value": "160ms",
+        "purpose": "Exits, about 20% shorter than entrances."
+      },
+      {
+        "name": "popover",
+        "value": "150-250ms, from scale 0.95, origin at trigger",
+        "purpose": "Dropdowns and popovers enter from and exit to their trigger."
+      },
+      {
+        "name": "hover",
+        "value": "150ms",
+        "purpose": "Background and colour transitions on controls."
+      },
+      {
+        "name": "press",
+        "value": "scale(0.97), 75ms",
+        "purpose": "Every pressable element."
+      },
+      {
+        "name": "move",
+        "value": "220-250ms, shared layoutId, ~12% stretch",
+        "purpose": "Indicators and knobs slide as one element and stretch along travel."
+      },
+      {
+        "name": "stagger",
+        "value": "30ms",
+        "purpose": "List entrances, items rise 4px."
+      },
+      {
+        "name": "reduced-motion",
+        "value": "MotionConfig reducedMotion=\"user\" + CSS duration clamp",
+        "purpose": "Respect the OS reduced-motion setting."
+      },
+      {
+        "name": "no-bounce",
+        "value": "no springs with overshoot",
+        "purpose": "Everyday UI never bounces."
+      }
+    ],
+    "layout": [
+      {
+        "name": "titlebar-h",
+        "value": "36px"
+      },
+      {
+        "name": "sidebar-w",
+        "value": "216px"
+      },
+      {
+        "name": "caption-clearance",
+        "value": "148px"
+      },
+      {
+        "name": "page-max",
+        "value": "1000px (narrow 760px, wide 1200px)"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one primary action on a page; lg size (40px) for Start session.",
+      "html": "<button class=\"ds-btn ds-btn-primary\">Start session</button>",
+      "css": ".ds-btn{position:relative;display:inline-flex;align-items:center;justify-content:center;gap:8px;height:32px;padding:0 14px;border:0;border-radius:var(--radius-control);font:500 13px Geist,\"Segoe UI Variable Text\",system-ui,sans-serif;white-space:nowrap;cursor:pointer;transition:background-color 150ms var(--ease-out),color 150ms var(--ease-out),transform 150ms var(--ease-out)} .ds-btn:active{transform:scale(0.97);transition-duration:75ms} .ds-btn:focus-visible{outline:2px solid var(--col-primary);outline-offset:2px} .ds-btn:disabled{opacity:.45;pointer-events:none} .ds-btn-primary{background:var(--col-primary);color:var(--on-primary)} .ds-btn-primary:hover{background:var(--col-primary-hover)}"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Neutral action on a 7% ink wash.",
+      "html": "<button class=\"ds-btn ds-btn-secondary\">Export</button>",
+      "css": ".ds-btn{position:relative;display:inline-flex;align-items:center;justify-content:center;gap:8px;height:32px;padding:0 14px;border:0;border-radius:var(--radius-control);font:500 13px Geist,\"Segoe UI Variable Text\",system-ui,sans-serif;white-space:nowrap;cursor:pointer;transition:background-color 150ms var(--ease-out),color 150ms var(--ease-out),transform 150ms var(--ease-out)} .ds-btn:active{transform:scale(0.97);transition-duration:75ms} .ds-btn:focus-visible{outline:2px solid var(--col-primary);outline-offset:2px} .ds-btn:disabled{opacity:.45;pointer-events:none} .ds-btn-secondary{background:color-mix(in oklch,var(--text-main) 7%,transparent);color:var(--text-main)} .ds-btn-secondary:hover{background:color-mix(in oklch,var(--text-main) 11%,transparent)}"
+    },
+    {
+      "name": "Ghost Button",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Quiet secondary action beside a primary, e.g. Change.",
+      "html": "<button class=\"ds-btn ds-btn-ghost\">Change</button>",
+      "css": ".ds-btn{position:relative;display:inline-flex;align-items:center;justify-content:center;gap:8px;height:32px;padding:0 14px;border:0;border-radius:var(--radius-control);font:500 13px Geist,\"Segoe UI Variable Text\",system-ui,sans-serif;white-space:nowrap;cursor:pointer;transition:background-color 150ms var(--ease-out),color 150ms var(--ease-out),transform 150ms var(--ease-out)} .ds-btn:active{transform:scale(0.97);transition-duration:75ms} .ds-btn:focus-visible{outline:2px solid var(--col-primary);outline-offset:2px} .ds-btn:disabled{opacity:.45;pointer-events:none} .ds-btn-ghost{background:transparent;color:var(--text-muted)} .ds-btn-ghost:hover{color:var(--text-main);background:color-mix(in oklch,var(--text-main) 6%,transparent)}"
+    },
+    {
+      "name": "Danger Button",
+      "kind": "button",
+      "refersTo": "button-danger",
+      "description": "Destructive action as a red wash, never a filled block.",
+      "html": "<button class=\"ds-btn ds-btn-danger\">Delete</button>",
+      "css": ".ds-btn{position:relative;display:inline-flex;align-items:center;justify-content:center;gap:8px;height:32px;padding:0 14px;border:0;border-radius:var(--radius-control);font:500 13px Geist,\"Segoe UI Variable Text\",system-ui,sans-serif;white-space:nowrap;cursor:pointer;transition:background-color 150ms var(--ease-out),color 150ms var(--ease-out),transform 150ms var(--ease-out)} .ds-btn:active{transform:scale(0.97);transition-duration:75ms} .ds-btn:focus-visible{outline:2px solid var(--col-primary);outline-offset:2px} .ds-btn:disabled{opacity:.45;pointer-events:none} .ds-btn-danger{background:color-mix(in oklch,var(--col-danger) 10%,transparent);color:var(--col-danger)} .ds-btn-danger:hover{background:color-mix(in oklch,var(--col-danger) 16%,transparent)}"
+    },
+    {
+      "name": "Segmented Control",
+      "kind": "custom",
+      "refersTo": "segmented-segment",
+      "description": "Radio group whose thumb slides between segments.",
+      "html": "<div class=\"ds-seg\" role=\"radiogroup\"><button class=\"ds-seg-item ds-seg-on\" role=\"radio\" aria-checked=\"true\">System</button><button class=\"ds-seg-item\" role=\"radio\" aria-checked=\"false\">Light</button><button class=\"ds-seg-item\" role=\"radio\" aria-checked=\"false\">Dark</button></div>",
+      "css": ".ds-seg{display:inline-flex;padding:2px;border-radius:6px;background:color-mix(in oklch,var(--text-main) 6%,transparent)} .ds-seg-item{height:28px;padding:0 12px;border:0;border-radius:5px;background:transparent;color:var(--text-muted);font:400 13px Geist,system-ui,sans-serif;cursor:pointer;transition:color 150ms var(--ease-out)} .ds-seg-item:hover{color:var(--text-main)} .ds-seg-item:focus-visible{outline:2px solid var(--col-primary);outline-offset:2px} .ds-seg-on{background:var(--bg-surface);color:var(--text-main);font-weight:500;box-shadow:0 1px 2px oklch(0 0 0 / 0.12)}"
+    },
+    {
+      "name": "Sidebar Nav",
+      "kind": "nav",
+      "refersTo": "nav-item",
+      "description": "Labeled sidebar items with a sliding 3px accent bar on the active item.",
+      "html": "<nav class=\"ds-nav\"><button class=\"ds-nav-item ds-nav-on\" aria-current=\"page\"><span class=\"ds-nav-bar\"></span>Today</button><button class=\"ds-nav-item\">Progress</button><button class=\"ds-nav-item\">Routines</button></nav>",
+      "css": ".ds-nav{display:flex;flex-direction:column;gap:2px;width:200px;padding:8px;background:var(--bg-sidebar)} .ds-nav-item{position:relative;height:36px;padding:0 12px 0 16px;border:0;border-radius:6px;background:transparent;color:var(--text-muted);text-align:left;font:400 13.5px Geist,system-ui,sans-serif;cursor:pointer;transition:background-color 150ms var(--ease-out),color 150ms var(--ease-out),transform 150ms var(--ease-out)} .ds-nav-item:hover{color:var(--text-main);background:color-mix(in oklch,var(--text-main) 4.5%,transparent)} .ds-nav-item:active{transform:scale(0.97)} .ds-nav-item:focus-visible{outline:2px solid var(--col-primary);outline-offset:2px} .ds-nav-on{color:var(--text-main);font-weight:500;background:color-mix(in oklch,var(--text-main) 7%,transparent)} .ds-nav-bar{position:absolute;left:0;top:50%;margin-top:-8px;width:3px;height:16px;border-radius:9999px;background:var(--col-primary)}"
+    },
+    {
+      "name": "Routine Row List",
+      "kind": "custom",
+      "refersTo": "list-row",
+      "description": "Hairline-divided rows: mono index, label, mono measurement.",
+      "html": "<ol class=\"ds-rows\"><li><span class=\"ds-m\">1</span><span>Lip trills</span><span class=\"ds-m\">2:00</span></li><li><span class=\"ds-m\">2</span><span>Resonance hums</span><span class=\"ds-m\">3:00</span></li><li><span class=\"ds-m\">3</span><span>Reading passage</span><span class=\"ds-m\">open</span></li></ol>",
+      "css": ".ds-rows{list-style:none;margin:0;padding:0;font:400 13.5px Geist,system-ui,sans-serif;color:var(--text-main)} .ds-rows li{display:grid;grid-template-columns:1.75rem 1fr auto;align-items:baseline;gap:8px;padding:10px 0;border-bottom:1px solid var(--border-color)} .ds-m{font-family:\"Geist Mono\",Consolas,monospace;font-variant-numeric:tabular-nums;font-size:12.5px;color:var(--text-muted)}"
+    },
+    {
+      "name": "Text Field",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Raised surface with a strong hairline that turns accent on focus.",
+      "html": "<textarea class=\"ds-input\">Keep the larynx relaxed.</textarea>",
+      "css": ".ds-input{width:280px;min-height:72px;padding:8px 12px;border:1px solid var(--border-strong);border-radius:6px;background:var(--bg-surface);color:var(--text-main);caret-color:var(--col-primary);font:400 13.5px/1.6 Geist,system-ui,sans-serif;outline:none;transition:border-color 150ms var(--ease-out)} .ds-input:focus{border-color:var(--col-primary)}"
+    },
+    {
+      "name": "Dialog",
+      "kind": "card",
+      "refersTo": "dialog",
+      "description": "Floating raised surface with Pop shadow, hairline header, ghost close.",
+      "html": "<div class=\"ds-dialog\" role=\"dialog\"><div class=\"ds-dialog-h\"><h2>Welcome to Resona</h2><button class=\"ds-x\" aria-label=\"Close\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\"><path d=\"M4 4l8 8M12 4l-8 8\"/></svg></button></div><div class=\"ds-dialog-b\">Start a session from Today whenever you are ready to train.</div></div>",
+      "css": ".ds-dialog{width:360px;background:var(--bg-surface);border:1px solid var(--border-color);border-radius:10px;box-shadow:var(--shadow-pop);font:400 13.5px/1.6 Geist,system-ui,sans-serif;color:var(--text-main)} .ds-dialog-h{display:flex;align-items:center;justify-content:space-between;height:48px;padding:0 12px 0 20px;border-bottom:1px solid var(--border-color)} .ds-dialog-h h2{margin:0;font-size:15px;font-weight:600} .ds-x{display:grid;place-items:center;width:32px;height:32px;border:0;border-radius:6px;background:transparent;color:var(--text-muted);cursor:pointer} .ds-x:hover{color:var(--text-main);background:color-mix(in oklch,var(--text-main) 6%,transparent)} .ds-x:focus-visible{outline:2px solid var(--col-primary);outline-offset:2px} .ds-dialog-b{padding:20px}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Quiet Utility",
+    "overview": "Resona looks like a well-made piece of Windows itself: a Mica nav layer, a 36px custom title bar with native caption buttons, a labeled sidebar like Windows Settings, and one raised content pane that holds the work. Nothing competes for attention. Hierarchy comes from type weight, alpha hairlines and space, never from boxes, glows or badges. The one recurring object is the user's voice range; everything else stays out of its way.\n\nDensity is calm and desktop-native: 13 to 14px text, 32px controls, left-anchored content columns that cap at 1000px. Every colour is derived at runtime from two accent source colours (the level-unlocked theme), and OKLCH relative-colour syntax normalises lightness so every theme lands equally calm and legible, in light and dark.\n\nMotion is quick, interruptible and physical without bounce: ease-out for entrances, ease-in-out for moves, exits shorter than entrances, a 0.97 press, and indicators that slide between positions on a shared layout id.",
+    "keyCharacteristics": [
+      "Two-layer shell: Mica-tinted nav layer, one raised content pane with a concentric 10px top-left corner.",
+      "Neutrals are greys tinted a few points toward the accent hue; one accent for primary action, selection and \"in range\".",
+      "Geist for all UI text; Geist Mono with tabular figures only for measurements (Hz, times, counts, indices).",
+      "Alpha hairlines divide content; rows and sections, not cards.",
+      "Small concentric radii: 6px controls, 10px surfaces.",
+      "Text first: a custom 16px, 1.5-stroke icon set used only for transport and system controls."
+    ],
+    "rules": [
+      {
+        "name": "The Two Sources Rule",
+        "section": "colors",
+        "body": "No colour is hand-picked per surface. Every token derives from `--accent-src` / `--accent2-src` through fixed OKLCH lightness and capped chroma, so a new theme can never break contrast."
+      },
+      {
+        "name": "The One Accent Rule",
+        "section": "colors",
+        "body": "The accent marks exactly three things: the primary action, the current selection, and \"in range\". If it appears for decoration, it is wrong."
+      },
+      {
+        "name": "The Dark Depth Rule",
+        "section": "colors",
+        "body": "In dark mode, lighter means closer: sidebar (L 0.165) sits lowest, then app ground (0.2), surface (0.245), panel (0.27)."
+      },
+      {
+        "name": "The Mono Means Measured Rule",
+        "section": "typography",
+        "body": "Geist Mono with tabular figures is used for numbers that are readings (times, Hz, counts, indices) and for nothing else."
+      },
+      {
+        "name": "The Sentence Case Rule",
+        "section": "typography",
+        "body": "Headings, labels and buttons are sentence case at normal tracking. There are no uppercase tracked labels and no small text sitting above a heading."
+      },
+      {
+        "name": "The Float-Only Shadow Rule",
+        "section": "elevation",
+        "body": "A shadow means the element floats above the page (dialog, popover, menu). Nothing resting in the page flow gets one."
+      },
+      {
+        "name": "The Concentric Rule",
+        "section": "shapes",
+        "body": "An inner radius equals the outer radius minus its inset. No surface exceeds 12px."
+      }
+    ],
+    "dos": [
+      "Do derive every new colour from `--accent-src` / `--accent2-src` through fixed OKLCH lightness and the chroma cap; never hard-code a theme colour.",
+      "Do separate content with 1px alpha hairlines and space; lay out lists as rows.",
+      "Do set measurements in Geist Mono with tabular figures, and everything else in Geist.",
+      "Do keep radii at 6px for controls and 10px for surfaces, concentric inside.",
+      "Do use ease-out (`cubic-bezier(0.23, 1, 0.32, 1)`) for entrances and ease-in-out (`cubic-bezier(0.65, 0, 0.35, 1)`) for elements moving on screen.",
+      "Do make exits about 20% shorter than entrances (200ms in, 160ms out).",
+      "Do keep dropdowns and popovers at 150 to 250ms, starting at scale 0.95 and entering from, and exiting to, their trigger.",
+      "Do stagger list entrances by 30ms per item.",
+      "Do scale pressable elements to 0.97 on press.",
+      "Do move indicators and knobs as one element with a shared layout id, stretching about 12% along the direction of travel while moving.",
+      "Do build motion with the Motion library so every animation is interruptible, and wrap the app in `MotionConfig reducedMotion=\"user\"`."
+    ],
+    "donts": [
+      "Don't use cards as structure: no grids of bordered or shadowed boxes holding page content.",
+      "Don't use gradients or glows anywhere.",
+      "Don't use large radii; nothing above 12px.",
+      "Don't reach for a general icon library (no Lucide everywhere); use the custom 16px 1.5-stroke set, and only where text cannot do the job.",
+      "Don't add decorative pills or badges.",
+      "Don't add eyebrow or kicker labels: no small or uppercase tracked text above a heading.",
+      "Don't bounce or overshoot everyday UI.",
+      "Don't put shadows on anything resting in the page flow."
+    ]
+  }
+}

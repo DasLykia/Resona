@@ -129,7 +129,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   practicePrompts: [],
   
   sessionFocus: DEFAULT_SESSION_FOCUS,
-  theme: 'dark',
+  theme: 'system',
   colorTheme: 'violet',
   planFontSize: 14,
   targetPitch: 261, // Middle C

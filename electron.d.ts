@@ -12,5 +12,7 @@ export interface IVelopackAPI {
 declare global {
   interface Window {
     velopackApi: IVelopackAPI;
+    // Only present inside Electron
+    resonaWindow?: { setTheme: (source: 'system' | 'light' | 'dark') => void };
   }
 }

@@ -88,7 +88,7 @@ export interface AppSettings {
   sessionFocus: string;
   
   // Appearance
-  theme: 'dark' | 'light';
+  theme: 'system' | 'dark' | 'light';
   colorTheme: ColorTheme; 
   customColors?: { primary: string; secondary: string }; // For Grand Master
   planFontSize: number;

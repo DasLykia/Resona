@@ -2,47 +2,125 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Your custom variables go here */
+@font-face {
+  font-family: 'Geist';
+  src: url('./assets/fonts/Geist-Variable.woff2') format('woff2');
+  font-weight: 100 900;
+  font-display: block;
+}
+@font-face {
+  font-family: 'Geist Mono';
+  src: url('./assets/fonts/GeistMono-Variable.woff2') format('woff2');
+  font-weight: 100 900;
+  font-display: block;
+}
+
+/*
+  Every colour derives from two source colours (the accent theme) set by App on :root.
+  Relative colour syntax normalises lightness, so every theme lands calm and equally legible.
+*/
 :root {
-  --bg-app: #ffffff; /* Example default, adjust as needed */
-  --bg-surface: #f3f4f6;
-  --col-primary: #3b82f6;
-  --col-primary-hover: #2563eb;
-  --col-secondary: #64748b;
-  --col-danger: #ef4444;
-  --text-main: #1e293b;
-  --text-muted: #94a3b8;
+  --accent-src: #8b5cf6;
+  --accent2-src: #10b981;
+  --chroma-cap: 0.16;
+
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --radius-control: 6px;
+  --radius-surface: 10px;
+  --sidebar-w: 216px;
+  --titlebar-h: 36px;
 }
 
-/* Dark mode variables (optional) */
-.dark {
-  --bg-app: #0f172a;
-  /* ... etc */
+:root,
+:root[data-mode='light'] {
+  color-scheme: light;
+  --bg-app: oklch(from var(--accent-src) 0.985 0.003 h);
+  --bg-sidebar: oklch(from var(--accent-src) 0.952 0.014 h);
+  --bg-surface: oklch(from var(--accent-src) 0.997 0.002 h);
+  --bg-panel: oklch(from var(--accent-src) 0.945 0.007 h);
+  --border-color: oklch(from var(--accent-src) 0.25 0.03 h / 0.12);
+  --border-strong: oklch(from var(--accent-src) 0.25 0.03 h / 0.2);
+  --text-main: oklch(from var(--accent-src) 0.22 0.015 h);
+  --text-muted: oklch(from var(--accent-src) 0.48 0.014 h);
+  --col-primary: oklch(from var(--accent-src) 0.53 min(c, var(--chroma-cap)) h);
+  --col-primary-hover: oklch(from var(--accent-src) 0.47 min(c, var(--chroma-cap)) h);
+  --on-primary: oklch(0.99 0 0);
+  --col-secondary: oklch(from var(--accent2-src) 0.56 min(c, 0.14) h);
+  --col-danger: oklch(0.55 0.19 25);
+  --shadow-pop: 0 1px 2px oklch(0 0 0 / 0.06), 0 8px 24px -6px oklch(0 0 0 / 0.16);
 }
 
-/* Your custom styles */
+:root[data-mode='dark'] {
+  color-scheme: dark;
+  /* Dark depth: lighter = closer. Sidebar sits lowest, popovers highest. */
+  --bg-app: oklch(from var(--accent-src) 0.2 0.006 h);
+  --bg-sidebar: oklch(from var(--accent-src) 0.165 0.012 h);
+  --bg-surface: oklch(from var(--accent-src) 0.245 0.008 h);
+  --bg-panel: oklch(from var(--accent-src) 0.27 0.009 h);
+  --border-color: oklch(from var(--accent-src) 0.97 0.02 h / 0.08);
+  --border-strong: oklch(from var(--accent-src) 0.97 0.02 h / 0.15);
+  --text-main: oklch(from var(--accent-src) 0.95 0.006 h);
+  --text-muted: oklch(from var(--accent-src) 0.7 0.012 h);
+  --col-primary: oklch(from var(--accent-src) 0.72 min(c, var(--chroma-cap)) h);
+  --col-primary-hover: oklch(from var(--accent-src) 0.78 min(c, var(--chroma-cap)) h);
+  --on-primary: oklch(from var(--accent-src) 0.2 0.03 h);
+  --col-secondary: oklch(from var(--accent2-src) 0.74 min(c, 0.13) h);
+  --col-danger: oklch(0.68 0.17 25);
+  --shadow-pop: 0 1px 2px oklch(0 0 0 / 0.3), 0 12px 32px -8px oklch(0 0 0 / 0.55);
+}
+
+/* In Electron the sidebar lets Windows Mica show through */
+:root.mica { background: transparent; }
+:root.mica body { background: transparent; }
+:root.mica[data-mode='light'] { --bg-sidebar: oklch(from var(--accent-src) 0.96 0.02 h / 0.5); }
+:root.mica[data-mode='dark'] { --bg-sidebar: oklch(from var(--accent-src) 0.16 0.02 h / 0.45); }
+
+html, body, #root { height: 100%; }
+
 body {
+  margin: 0;
   background-color: var(--bg-app);
   color: var(--text-main);
-  margin: 0;
-  font-family: 'Inter', system-ui, sans-serif;
+  font-family: 'Geist', 'Segoe UI Variable Text', system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.45;
+  font-feature-settings: 'ss01', 'cv11';
+  -webkit-font-smoothing: antialiased;
   overflow: hidden;
-  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-/* Custom scrollbar */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+h1, h2, h3 { text-wrap: balance; }
+
+input[type='number'], .tabular-nums, .font-mono { font-variant-numeric: tabular-nums; }
+
+::selection {
+  background-color: color-mix(in oklch, var(--col-primary) 32%, transparent);
+  color: inherit;
 }
-::-webkit-scrollbar-track {
-  background: transparent; 
+
+/* Ring follows each element's own shape (outline tracks border-radius) */
+:focus-visible {
+  outline: 2px solid var(--col-primary);
+  outline-offset: 2px;
 }
+
+input, textarea, select { caret-color: var(--col-primary); accent-color: var(--col-primary); }
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb {
-  background: var(--text-muted); 
+  background: var(--border-strong);
+  border: 3px solid transparent;
+  background-clip: padding-box;
   border-radius: 10px;
-  opacity: 0.3;
 }
-::-webkit-scrollbar-thumb:hover {
-  background: var(--col-primary); 
+::-webkit-scrollbar-thumb:hover { background-color: var(--text-muted); }
+
+/* Title bar drag areas (Electron) */
+.drag { -webkit-app-region: drag; }
+.no-drag { -webkit-app-region: no-drag; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
 }

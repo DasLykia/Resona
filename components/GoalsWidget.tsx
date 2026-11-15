@@ -65,7 +65,7 @@ export const GoalsWidget: React.FC<GoalsWidgetProps> = ({ goals, onAddGoal, onRe
         <div className="flex gap-2">
             <button 
                 onClick={() => setShowHistory(!showHistory)} 
-                className={`p-1.5 rounded-lg transition-colors ${showHistory ? 'bg-primary text-white' : 'text-text-muted hover:bg-white/5'}`}
+                className={`p-1.5 rounded-lg transition-colors ${showHistory ? 'bg-primary text-on-primary' : 'text-text-muted hover:bg-white/5'}`}
                 title="Goal History"
             >
                 <History size={16} />

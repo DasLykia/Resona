@@ -1,3 +1,6 @@
+// color-mix keeps opacity modifiers (bg-primary/10) working on CSS-variable colours
+const token = (v) => `color-mix(in oklch, var(${v}) calc(<alpha-value> * 100%), transparent)`;
+
 /** @type {import('tailwindcss').Config} */
 export default {
   content: [
@@ -6,24 +9,41 @@ export default {
     "./components/**/*.{js,ts,jsx,tsx}",
     "./services/**/*.{js,ts,jsx,tsx}"
   ],
-  darkMode: 'class',
+  darkMode: ['selector', '[data-mode="dark"]'],
   theme: {
     extend: {
       colors: {
-        background: 'var(--bg-app)',
-        surface: 'var(--bg-surface)',
-        'surface-highlight': 'var(--bg-panel)',
-        primary: 'var(--col-primary)',
-        'primary-hover': 'var(--col-primary-hover)',
-        secondary: 'var(--col-secondary)',
-        danger: 'var(--col-danger)',
-        text: 'var(--text-main)',
-        'text-muted': 'var(--text-muted)',
+        background: token('--bg-app'),
+        sidebar: token('--bg-sidebar'),
+        surface: token('--bg-surface'),
+        'surface-highlight': token('--bg-panel'),
+        primary: token('--col-primary'),
+        'primary-hover': token('--col-primary-hover'),
+        'on-primary': token('--on-primary'),
+        secondary: token('--col-secondary'),
+        danger: token('--col-danger'),
+        text: token('--text-main'),
+        'text-muted': token('--text-muted'),
         border: 'var(--border-color)',
+        'border-strong': 'var(--border-strong)',
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
-        mono: ['JetBrains Mono', 'Menlo', 'monospace'],
+        sans: ['Geist', 'Segoe UI Variable Text', 'system-ui', 'sans-serif'],
+        mono: ['Geist Mono', 'Consolas', 'monospace'],
+      },
+      // Small, concentric radii: controls 6px, surfaces 10px. Old rounded-2xl/3xl usages shrink with this.
+      borderRadius: {
+        lg: '6px',
+        xl: '8px',
+        '2xl': '10px',
+        '3xl': '12px',
+      },
+      boxShadow: {
+        pop: 'var(--shadow-pop)',
+      },
+      transitionTimingFunction: {
+        out: 'var(--ease-out)',
+        'in-out': 'var(--ease-in-out)',
       },
       animation: {
         'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',

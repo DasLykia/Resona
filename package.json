@@ -21,6 +21,7 @@
     "date-fns": "^4.1.0",
     "electron-store": "^11.0.2",
     "lucide-react": "^0.562.0",
+    "motion": "^12.43.0",
     "pitchy": "^4.1.0",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",

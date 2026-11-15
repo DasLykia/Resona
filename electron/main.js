@@ -1,5 +1,5 @@
 import { VelopackApp, UpdateManager } from 'velopack';
-import { app, BrowserWindow, ipcMain, Menu } from "electron";
+import { app, BrowserWindow, ipcMain, Menu, nativeTheme } from "electron";
 import path from "path";
 import { fileURLToPath } from "url";
 import Store from "electron-store";
@@ -19,12 +19,26 @@ const store = new Store();
 // Keep a global reference of the window object to send messages
 let win;
 
+const TITLEBAR_HEIGHT = 36;
+const overlayFor = (dark) => ({
+  color: "#00000000",
+  symbolColor: dark ? "#f2f2f2" : "#1c1c1c",
+  height: TITLEBAR_HEIGHT,
+});
+
 function createWindow() {
   const defaultBounds = { width: 1200, height: 800 };
   const bounds = store.get("windowBounds", defaultBounds);
 
   win = new BrowserWindow({
     ...bounds,
+    minWidth: 880,
+    minHeight: 600,
+    // Mica behind a transparent page; the app draws its own title bar, Windows keeps the caption buttons
+    backgroundColor: "#00000000",
+    backgroundMaterial: "mica",
+    titleBarStyle: "hidden",
+    titleBarOverlay: overlayFor(nativeTheme.shouldUseDarkColors),
     icon: path.join(__dirname, "../build/icon.ico"),
     webPreferences: {
       preload: path.join(__dirname, "preload.cjs"), 
@@ -84,6 +98,16 @@ ipcMain.handle("velopack:apply-update", async (event, updateInfo) => {
     await um.waitExitThenApplyUpdate(updateInfo); 
     app.quit(); 
     return true;
+});
+
+// --- Window / Theme ---
+// 'system' | 'light' | 'dark'. Drives Mica's tint and prefers-color-scheme in the page.
+ipcMain.on("window:set-theme", (event, source) => {
+  if (["system", "light", "dark"].includes(source)) nativeTheme.themeSource = source;
+});
+
+nativeTheme.on("updated", () => {
+  if (win && !win.isDestroyed()) win.setTitleBarOverlay(overlayFor(nativeTheme.shouldUseDarkColors));
 });
 
 // --- Other IPC Handlers ---

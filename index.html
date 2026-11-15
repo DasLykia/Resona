@@ -1,47 +1,21 @@
-
 <!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Resona</title>
-    <style>
-      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap');
-
-      body {
-        background-color: var(--bg-app);
-        color: var(--text-main);
-        margin: 0;
-        font-family: 'Inter', system-ui, sans-serif;
-        overflow: hidden; 
-      }
-      
-      .panel-card {
-        background-color: var(--bg-surface);
-        border: 1px solid var(--border-color);
-        border-radius: 0.75rem;
-      }
-
-      /* Custom scrollbar */
-      ::-webkit-scrollbar {
-        width: 8px;
-        height: 8px;
-      }
-      ::-webkit-scrollbar-track {
-        background: transparent; 
-      }
-      ::-webkit-scrollbar-thumb {
-        background: var(--border-color); 
-        border-radius: 4px;
-      }
-      ::-webkit-scrollbar-thumb:hover {
-        background: var(--text-muted); 
-      }
-    </style>
-<link rel="stylesheet" href="/index.css">
-</head>
+    <script>
+      // Set the colour mode before first paint so a dark system never flashes light
+      try {
+        var t = (JSON.parse(localStorage.getItem('resona_settings_v3')) || {}).theme || 'system';
+        document.documentElement.dataset.mode = t === 'system'
+          ? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : t;
+      } catch (e) {}
+    </script>
+    <link rel="stylesheet" href="/index.css">
+  </head>
   <body>
     <div id="root"></div>
-  <script type="module" src="/index.tsx"></script>
-</body>
+    <script type="module" src="/index.tsx"></script>
+  </body>
 </html>

@@ -7,3 +7,7 @@ contextBridge.exposeInMainWorld("velopackApi", {
     applyUpdates: (updateInfo) => ipcRenderer.invoke("velopack:apply-update", updateInfo),
     clearAppData: () => ipcRenderer.send('clear-app-data'),
 });
+
+contextBridge.exposeInMainWorld("resonaWindow", {
+    setTheme: (source) => ipcRenderer.send("window:set-theme", source),
+});
