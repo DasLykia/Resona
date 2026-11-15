@@ -4,7 +4,7 @@ import type { PitchRange, TrainingSession } from '../../types';
 import { computePitchStats, STRAIN_LABELS } from '../../services/pitchStats';
 import { RangeBand } from './RangeBand';
 import { Button } from '../Button';
-import { IconPause, IconPlay } from '../icons';
+import { RecordingPlayer } from '../RecordingPlayer';
 
 const EASE_OUT = [0.23, 1, 0.32, 1] as const;
 
@@ -12,7 +12,7 @@ const EASE_OUT = [0.23, 1, 0.32, 1] as const;
 const Duration: React.FC<{ s: number }> = ({ s }) => {
   const m = Math.floor(s / 60), sec = s % 60;
   const n = (v: number) => <span className="text-text font-mono tabular-nums">{v}</span>;
-  return m ? <>{n(m)} min {n(sec)} s</> : <>{n(sec)} s</>;
+  return m ? <>{n(m)}{' '}min {n(sec)}{' '}s</> : <>{n(sec)}{' '}s</>;
 };
 
 interface SessionSummaryProps {
@@ -52,8 +52,8 @@ export const SessionSummary: React.FC<SessionSummaryProps> = ({ session, range, 
             ? 'Resona didn’t pick up any pitch this time. Check the microphone if that seems wrong.'
             : <>
                 <span className="text-text font-mono tabular-nums">{stats.inRangePct}%</span> of your voiced time was inside{' '}
-                <span className="font-mono tabular-nums">{range.low}–{range.high}</span> Hz, with a median of{' '}
-                <span className="text-text font-mono tabular-nums">{stats.median}</span> Hz.
+                <span className="font-mono tabular-nums">{range.low}–{range.high}</span>{' '}Hz, with a median of{' '}
+                <span className="text-text font-mono tabular-nums">{stats.median}</span>{' '}Hz.
               </>}
         </p>
 
@@ -63,7 +63,7 @@ export const SessionSummary: React.FC<SessionSummaryProps> = ({ session, range, 
           </div>
         )}
 
-        {recording && recording.size > 0 && <RecordingPlayer blob={recording} fallbackLength={session.duration} />}
+        {recording && recording.size > 0 && <div className="mt-8"><RecordingPlayer blob={recording} fallbackLength={session.duration} /></div>}
 
         <section className="mt-10 pt-8 border-t border-border">
           <div className="flex items-baseline justify-between">
@@ -138,52 +138,6 @@ export const SessionSummary: React.FC<SessionSummaryProps> = ({ session, range, 
           <Button size="lg" onClick={finish}>Done</Button>
         </div>
       </div>
-    </div>
-  );
-};
-
-// WebM from MediaRecorder reports Infinity as its duration in Chromium, so the session length stands in
-const RecordingPlayer: React.FC<{ blob: Blob; fallbackLength: number }> = ({ blob, fallbackLength }) => {
-  const url = useMemo(() => URL.createObjectURL(blob), [blob]);
-  const audio = useRef<HTMLAudioElement>(null);
-  const [playing, setPlaying] = useState(false);
-  const [t, setT] = useState(0);
-  const [len, setLen] = useState(fallbackLength);
-  useEffect(() => () => URL.revokeObjectURL(url), [url]);
-
-  const fmt = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
-  const toggle = () => { const a = audio.current!; a.paused ? a.play() : a.pause(); };
-  const seek = (e: React.MouseEvent<HTMLDivElement>) => {
-    const a = audio.current!, r = e.currentTarget.getBoundingClientRect();
-    a.currentTime = ((e.clientX - r.left) / r.width) * (Number.isFinite(a.duration) ? a.duration : len);
-  };
-
-  return (
-    <div className="mt-8 flex items-center gap-4">
-      <audio
-        ref={audio} src={url} preload="metadata"
-        onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} onEnded={() => setPlaying(false)}
-        onTimeUpdate={e => setT(e.currentTarget.currentTime)}
-        onLoadedMetadata={e => Number.isFinite(e.currentTarget.duration) && setLen(e.currentTarget.duration)}
-        onDurationChange={e => Number.isFinite(e.currentTarget.duration) && setLen(e.currentTarget.duration)}
-      />
-      <Button variant="secondary" size="icon" aria-label={playing ? 'Pause recording' : 'Play recording'} onClick={toggle}>
-        <AnimatePresence mode="popLayout" initial={false}>
-          <motion.span key={playing ? 'pause' : 'play'} className="grid place-items-center"
-            initial={{ opacity: 0, scale: 0.6, filter: 'blur(3px)' }}
-            animate={{ opacity: 1, scale: 1, filter: 'blur(0px)', transition: { duration: 0.18, ease: EASE_OUT } }}
-            exit={{ opacity: 0, scale: 0.6, filter: 'blur(3px)', transition: { duration: 0.14 } }}>
-            {playing ? <IconPause /> : <IconPlay />}
-          </motion.span>
-        </AnimatePresence>
-      </Button>
-      <span className="text-[13.5px]">Recording</span>
-      <div className="relative flex-1 h-5 flex items-center cursor-pointer group" onClick={seek}>
-        <div className="w-full h-[3px] rounded-full bg-text/10 overflow-hidden">
-          <div className="h-full bg-primary" style={{ width: len ? `${(t / len) * 100}%` : '0%' }} />
-        </div>
-      </div>
-      <span className="font-mono tabular-nums text-[12.5px] text-text-muted w-24 text-right">{fmt(t)}{len ? ` / ${fmt(len)}` : ''}</span>
     </div>
   );
 };

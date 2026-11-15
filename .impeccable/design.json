@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-11-15T22:17:18.780Z",
+  "generatedAt": "2026-11-15T22:41:52.667Z",
   "title": "Design System: Resona",
   "extensions": {
     "colorMeta": {
@@ -264,7 +264,7 @@
         "name": "pop",
         "value": "0 1px 2px oklch(0 0 0 / 0.06), 0 8px 24px -6px oklch(0 0 0 / 0.16)",
         "dark": "0 1px 2px oklch(0 0 0 / 0.3), 0 12px 32px -8px oklch(0 0 0 / 0.55)",
-        "purpose": "Dialogs, popovers and menus only."
+        "purpose": "Dialogs, popovers, menus and chart tooltips only."
       },
       {
         "name": "segment-lift",
@@ -372,6 +372,46 @@
         "name": "confetti",
         "value": "canvas-confetti, palette colours, 350ms delay, disableForReducedMotion",
         "purpose": "Milestones only: level up, achievement, claimed goal."
+      },
+      {
+        "name": "trend-draw",
+        "value": "pathLength 0 -> 1, 250ms ease-out",
+        "purpose": "Pitch trend median line draw-in."
+      },
+      {
+        "name": "tooltip",
+        "value": "opacity + scale, 150ms in / 120ms out",
+        "purpose": "Chart hover tooltip."
+      },
+      {
+        "name": "row-layout",
+        "value": "layout tween 220ms ease-in-out",
+        "purpose": "Session table rows reflowing when one expands or is deleted."
+      },
+      {
+        "name": "row-expand",
+        "value": "height + opacity, 240ms in / 190ms out, ease-out",
+        "purpose": "Session row detail."
+      },
+      {
+        "name": "jump-highlight",
+        "value": "6% accent wash, fades after 1.6s",
+        "purpose": "Row reached from the trend or calendar."
+      },
+      {
+        "name": "calendar-page",
+        "value": "x 24px in paging direction + opacity, 220ms in / 180ms out, ease-out",
+        "purpose": "Activity calendar month paging."
+      },
+      {
+        "name": "goal-fill",
+        "value": "width, 250ms ease-out",
+        "purpose": "Goal progress bars."
+      },
+      {
+        "name": "seek-thumb",
+        "value": "opacity 150ms ease-out on hover/focus",
+        "purpose": "Seek bar thumb reveal."
       }
     ],
     "layout": [
@@ -406,6 +446,14 @@
       {
         "name": "pitch-scale",
         "value": "log 70-420 Hz"
+      },
+      {
+        "name": "chart-label-gap",
+        "value": "32px minimum"
+      },
+      {
+        "name": "calendar",
+        "value": "two months, Monday first, 36px day cells"
       }
     ]
   },
@@ -513,11 +561,27 @@
       "description": "Ghost previous/next around the one filled pause/resume button.",
       "html": "<div class=\"ds-tr\"><button aria-label=\"Previous exercise\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M4 3.5v9\"/><path d=\"M12.5 3.5v9L6 8z\" fill=\"currentColor\"/></svg></button><button class=\"ds-tr-main\" aria-label=\"Pause\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M5.25 3.5v9M10.75 3.5v9\" stroke-width=\"2.25\"/></svg></button><button aria-label=\"Next exercise\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M12 3.5v9\"/><path d=\"M3.5 3.5v9L10 8z\" fill=\"currentColor\"/></svg></button></div>",
       "css": ".ds-tr{display:flex;align-items:center;gap:8px} .ds-tr button{display:grid;place-items:center;height:32px;width:32px;border:0;border-radius:6px;background:transparent;color:var(--text-muted);cursor:pointer;transition:background-color 150ms,color 150ms,transform 150ms} .ds-tr button:hover{color:var(--text-main);background:color-mix(in oklch,var(--text-main) 6%,transparent)} .ds-tr button:active{transform:scale(.97)} .ds-tr button:focus-visible{outline:2px solid var(--col-primary);outline-offset:2px} .ds-tr .ds-tr-main{height:40px;width:48px;background:var(--col-primary);color:var(--on-primary)} .ds-tr .ds-tr-main:hover{background:var(--col-primary-hover);color:var(--on-primary)}"
+    },
+    {
+      "name": "Confirm Button",
+      "kind": "custom",
+      "refersTo": "confirm-button",
+      "description": "Replaces window.confirm: a popover from the trigger with Cancel and a danger action naming the act.",
+      "html": "<div class=\"ds-cf\"><button class=\"ds-btn ds-btn-ghost\" aria-expanded=\"true\">Delete</button><div class=\"ds-cf-pop\" role=\"dialog\" aria-label=\"Delete session\"><p>Delete this session? This can&rsquo;t be undone.</p><div class=\"ds-cf-a\"><button class=\"ds-btn ds-btn-ghost\">Cancel</button><button class=\"ds-btn ds-btn-danger\">Delete session</button></div></div></div>",
+      "css": ".ds-btn{position:relative;display:inline-flex;align-items:center;justify-content:center;gap:8px;height:28px;padding:0 10px;border:0;border-radius:var(--radius-control);font:500 13px Geist,\"Segoe UI Variable Text\",system-ui,sans-serif;white-space:nowrap;cursor:pointer;transition:background-color 150ms var(--ease-out),color 150ms var(--ease-out),transform 150ms var(--ease-out)} .ds-btn:active{transform:scale(0.97);transition-duration:75ms} .ds-btn:focus-visible{outline:2px solid var(--col-primary);outline-offset:2px} .ds-btn-ghost{background:transparent;color:var(--text-muted)} .ds-btn-ghost:hover{color:var(--text-main);background:color-mix(in oklch,var(--text-main) 6%,transparent)} .ds-btn-danger{background:color-mix(in oklch,var(--col-danger) 10%,transparent);color:var(--col-danger)} .ds-btn-danger:hover{background:color-mix(in oklch,var(--col-danger) 16%,transparent)} .ds-cf{display:inline-flex;flex-direction:column;align-items:flex-end;gap:6px} .ds-cf-pop{width:256px;padding:16px;background:var(--bg-surface);border:1px solid var(--border-color);border-radius:10px;box-shadow:var(--shadow-pop);color:var(--text-main);transform-origin:top right;animation:ds-cf-in 180ms cubic-bezier(0.23,1,0.32,1)} @keyframes ds-cf-in{from{opacity:0;transform:scale(.95)}} .ds-cf-pop p{margin:0;font:400 13.5px/1.6 Geist,system-ui,sans-serif} .ds-cf-a{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}"
+    },
+    {
+      "name": "Seek Bar",
+      "kind": "input",
+      "refersTo": "seek-bar",
+      "description": "Native range input as a 3px hairline; accent fill to the playhead, thumb only on hover and focus, 1s step.",
+      "html": "<input class=\"ds-seek\" type=\"range\" min=\"0\" max=\"190\" step=\"1\" value=\"42\" style=\"--pct:22%\" aria-label=\"Seek\"/>",
+      "css": ".ds-seek{appearance:none;-webkit-appearance:none;width:320px;height:20px;background:transparent;cursor:pointer} .ds-seek::-webkit-slider-runnable-track{height:3px;border-radius:3px;background:linear-gradient(to right,var(--col-primary) var(--pct),color-mix(in oklch,var(--text-main) 10%,transparent) var(--pct))} .ds-seek::-webkit-slider-thumb{-webkit-appearance:none;width:11px;height:11px;margin-top:-4px;border-radius:50%;background:var(--col-primary);opacity:0;transition:opacity 150ms var(--ease-out)} .ds-seek:hover::-webkit-slider-thumb,.ds-seek:focus-visible::-webkit-slider-thumb{opacity:1} .ds-seek:focus-visible{outline:2px solid var(--col-primary);outline-offset:2px;border-radius:6px}"
     }
   ],
   "narrative": {
     "northStar": "The Quiet Utility",
-    "overview": "Resona looks like a well-made piece of Windows itself: a Mica nav layer, a 36px custom title bar with native caption buttons, a labeled sidebar like Windows Settings, and one raised content pane that holds the work. Nothing competes for attention. Hierarchy comes from type weight, alpha hairlines and space, never from boxes, glows or badges. The one recurring object is the user's voice range; everything else stays out of its way.\n\nDensity is calm and desktop-native: 13 to 14px text, 32px controls, left-anchored content columns that cap at 1000px. Every colour is derived at runtime from two accent source colours (the level-unlocked theme), and OKLCH relative-colour syntax normalises lightness so every theme lands equally calm and legible, in light and dark.\n\nMotion is quick, interruptible and physical without bounce: ease-out for entrances, ease-in-out for moves, exits shorter than entrances, a 0.97 press, and indicators that slide between positions on a shared layout id.\n\nA session is a full-window focus mode. It keeps the same palette, hairlines and radii but adds a display tier read from a step back from the screen, and the accent inside it carries only signal: a primary action, a selection, progress (block progress, the recording scrubber) and \"in range\". Progress, Routines and Settings internals still carry the pre-redesign look (scheduled for phases 3 and 4); they are drift, not reference.",
+    "overview": "Resona looks like a well-made piece of Windows itself: a Mica nav layer, a 36px custom title bar with native caption buttons, a labeled sidebar like Windows Settings, and one raised content pane that holds the work. Nothing competes for attention. Hierarchy comes from type weight, alpha hairlines and space, never from boxes, glows or badges. The one recurring object is the user's voice range; everything else stays out of its way.\n\nDensity is calm and desktop-native: 13 to 14px text, 32px controls, left-anchored content columns that cap at 1000px. Every colour is derived at runtime from two accent source colours (the level-unlocked theme), and OKLCH relative-colour syntax normalises lightness so every theme lands equally calm and legible, in light and dark.\n\nMotion is quick, interruptible and physical without bounce: ease-out for entrances, ease-in-out for moves, exits shorter than entrances, a 0.97 press, and indicators that slide between positions on a shared layout id.\n\nA session is a full-window focus mode. It keeps the same palette, hairlines and radii but adds a display tier read from a step back from the screen, and the accent inside it carries only signal: a primary action, a selection, progress (block progress, the recording scrubber) and \"in range\".\n\nProgress is a reading page, not a dashboard: ruled sections that each answer one question, charts that all share the range band, sessions in a ruled table that expand in place, and destructive actions that confirm in a popover grown from their own trigger. The Routines page (RoutineEditor, PlanEditor), the SettingsForm and LevelProgressModal still carry the pre-redesign look (scheduled for phase 4); they are drift, not reference.",
     "keyCharacteristics": [
       "Two-layer shell: Mica-tinted nav layer, one raised content pane with a concentric 10px top-left corner.",
       "Neutrals are greys tinted a few points toward the accent hue; one accent for primary action, selection and \"in range\".",
@@ -526,7 +590,8 @@
       "Small concentric radii: 6px controls, 10px surfaces.",
       "Text first: a custom 16px, 1.5-stroke icon set used only for transport and system controls.",
       "The range band is the one signature object, drawn with the same tint and edge recipe wherever pitch appears.",
-      "Two type tiers: the page tier for arm's-length reading and a focus tier for reading at a distance during a session."
+      "Two type tiers: the page tier for arm's-length reading and a focus tier for reading at a distance during a session.",
+      "No native dialogs: every destructive action confirms in a popover from the button that asked."
     ],
     "rules": [
       {
@@ -537,7 +602,7 @@
       {
         "name": "The One Accent Rule",
         "section": "colors",
-        "body": "The accent marks exactly three things: the primary action, the current selection, and \"in range\". If it appears for decoration, it is wrong."
+        "body": "The accent marks exactly four things: the primary action, the current selection, \"in range\", and progress (block progress, seek fill, goal bars, trained-day tint). If it appears for decoration, it is wrong."
       },
       {
         "name": "The Range Colour Rule",
@@ -565,6 +630,11 @@
         "body": "In running text the number is Geist Mono in ink and the unit stays in Geist (\"**12** min **4** s\", \"**68**% ... inside **239–285** Hz\")."
       },
       {
+        "name": "The Unbroken Measurement Rule",
+        "section": "typography",
+        "body": "A measurement and its unit never split across lines: the number and unit are one no-wrap unit (the `Num` helper: mono number in ink, a space, the unit in Geist)."
+      },
+      {
         "name": "The Sentence Case Rule",
         "section": "typography",
         "body": "Headings, labels and buttons are sentence case at normal tracking. There are no uppercase tracked labels and no small text sitting above a heading."
@@ -572,7 +642,7 @@
       {
         "name": "The Float-Only Shadow Rule",
         "section": "elevation",
-        "body": "A shadow means the element floats above the page (dialog, popover, menu). Nothing resting in the page flow gets one."
+        "body": "A shadow means the element floats above the page (dialog, popover, menu, tooltip). Nothing resting in the page flow gets one."
       },
       {
         "name": "The Concentric Rule",
@@ -583,6 +653,16 @@
         "name": "The One Band Rule",
         "section": "components",
         "body": "The band is never restyled per surface. Inside it, accent means \"in range\" (plus the current median, the current selection); everything outside the band is ink at reduced alpha (30 to 55%)."
+      },
+      {
+        "name": "The 32px Label Rule",
+        "section": "components",
+        "body": "Grid labels are thinned to at least 32px apart; a chart shows fewer labels before it lets them crowd."
+      },
+      {
+        "name": "The Recording Lives In Its Session Rule",
+        "section": "components",
+        "body": "A recording is shown inside its session's detail. Only orphaned recordings get a list of their own."
       }
     ],
     "dos": [
@@ -602,7 +682,12 @@
       "Do colour pitch status by the Range Colour Rule: accent in range, ink below or above, muted while listening.",
       "Do float small editors in the anchored Popover, growing from and shrinking back into their trigger.",
       "Do autosave sessions of 30 seconds or more, and ask for \"Save anyway\" below that.",
-      "Do confirm a save with the 240ms confirm pulse beside what was saved."
+      "Do confirm a save with the 240ms confirm pulse beside what was saved.",
+      "Do keep a measurement and its unit on one line (the `Num` helper, no-wrap).",
+      "Do draw the range band with the same recipe on every chart that shows pitch, including Progress charts.",
+      "Do confirm destructive actions with the Confirm button: a popover from the trigger with Cancel and a danger action that names the act.",
+      "Do show a recording inside its session; give only orphaned recordings their own list.",
+      "Do thin chart grid labels so they sit at least 32px apart."
     ],
     "donts": [
       "Don't use cards as structure: no grids of bordered or shadowed boxes holding page content.",
@@ -616,7 +701,8 @@
       "Don't use the accent decoratively inside focus mode; every accent there is a primary action, a selection, progress or \"in range\".",
       "Don't colour out-of-range pitch red.",
       "Don't fire confetti for ordinary session ends, or in colours outside the palette.",
-      "Don't treat Progress, Routines or Settings internals as reference; they are legacy drift until phases 3 and 4."
+      "Don't use `window.confirm` or any native dialog for a destructive action.",
+      "Don't treat the Routines page (RoutineEditor, PlanEditor), the SettingsForm or LevelProgressModal as reference; they are legacy drift until phase 4."
     ]
   }
 }

@@ -10,16 +10,8 @@ import { Modal } from './components/Modal';
 import { Segmented } from './components/Segmented';
 import { Sidebar, Page } from './components/shell/Sidebar';
 import { TitleBar } from './components/shell/TitleBar';
-import { StatsPanel } from './components/StatsPanel';
-import { RecordingsManager } from './components/RecordingsManager';
 import { RoutineEditor } from './components/RoutineEditor';
 import { PlanEditor } from './components/PlanEditor';
-import { AnalyticsDashboard } from './components/AnalyticsDashboard';
-import { SessionHistory } from './components/SessionHistory';
-import { GoalsWidget } from './components/GoalsWidget';
-import { AchievementsWidget } from './components/AchievementsWidget';
-import { CustomCalendar } from './components/CustomCalendar';
-import { VocalHealthChart } from './components/VocalHealthChart';
 import { LevelProgressModal } from './components/LevelProgressModal';
 
 import { 
@@ -35,12 +27,18 @@ import {
 } from './services/storage';
 import { audioService, AudioService } from './services/audio';
 import { calculateStreaks } from './services/stats';
-import { computePitchStats, rangeAround, rangeCenter } from './services/pitchStats';
+import { computePitchStats, rangeAround, rangeCenter, strainFromEffort } from './services/pitchStats';
 import { RangeBand } from './components/session/RangeBand';
 import { RangeEditor } from './components/session/RangeEditor';
 import { FocusSession } from './components/session/FocusSession';
 import { MicCheck } from './components/session/MicCheck';
 import { SessionSummary } from './components/session/SessionSummary';
+import { PitchTrend, TrendPoint } from './components/progress/PitchTrend';
+import { CompareRecordings } from './components/progress/CompareRecordings';
+import { ActivityCalendar } from './components/progress/ActivityCalendar';
+import { SessionList, sessionStrain } from './components/progress/SessionList';
+import { OtherRecordings } from './components/progress/OtherRecordings';
+import { Goals, Achievements } from './components/progress/GoalsAndAchievements';
 import { version } from './package.json';
 
 // --- APPEARANCE ---
@@ -516,8 +514,8 @@ const App: React.FC = () => {
   const [showLevelModal, setShowLevelModal] = useState(false);
   
   // Navigation State
-  const [highlightedSessionId, setHighlightedSessionId] = useState<string | null>(null);
-  const [highlightedRecordingId, setHighlightedRecordingId] = useState<string | null>(null);
+  // `at` makes a repeat jump to the same session a new request
+  const [highlight, setHighlight] = useState<{ id: string; at: number } | null>(null);
 
   // Session State
   const [sessionKind, setSessionKind] = useState<'routine' | 'free'>('routine');
@@ -589,7 +587,7 @@ const App: React.FC = () => {
   useEffect(() => { saveToStorage(STORAGE_KEYS.SESSIONS, sessions); }, [sessions]);
   useEffect(() => { saveToStorage(STORAGE_KEYS.GOALS, goals); }, [goals]);
 
-  // Recalc Streak on Load
+  // Recalc streak on load, when the schedule changes, and when rest days change
   useEffect(() => {
     const { currentStreak } = calculateStreaks(
         Object.fromEntries(Object.keys(stats.history).map(k => [k, true])), 
@@ -599,7 +597,7 @@ const App: React.FC = () => {
     if (currentStreak !== stats.currentStreak) {
       setStats(prev => ({ ...prev, currentStreak }));
     }
-  }, [settings.trainingDays]);
+  }, [settings.trainingDays, stats.sickDays]);
 
   // --- XP & Level System ---
   const levelProgress = useMemo(() => {
@@ -610,12 +608,8 @@ const App: React.FC = () => {
 
   // --- Navigation Helpers ---
   const jumpToSession = (sessionId: string) => {
-      setHighlightedSessionId(sessionId);
-      setPage('progress');
-  };
-
-  const jumpToRecording = (recordingId: string) => {
-      setHighlightedRecordingId(recordingId);
+      if (!sessions.some(s => s.id === sessionId)) return; // e.g. a kept strain mark whose session was deleted
+      setHighlight({ id: sessionId, at: Date.now() });
       setPage('progress');
   };
 
@@ -912,17 +906,17 @@ const App: React.FC = () => {
       setGoals(prev => prev.filter(g => g.id !== goalId));
   };
 
+  // Confirmation happens in the UI (ConfirmButton)
   const handleDeleteHistoryEntry = (goalId: string) => {
-      if (confirm("Remove this goal from history?")) {
-          const newHistory = (stats.goalHistory || []).filter(g => g.id !== goalId);
-          setStats(prev => ({ ...prev, goalHistory: newHistory }));
-      }
+      setStats(prev => ({ ...prev, goalHistory: (prev.goalHistory || []).filter(g => g.id !== goalId) }));
   };
 
-  const handleSaveSickDays = (days: string[]) => {
-      const newSickDays: { [key: string]: boolean } = {};
-      days.forEach(d => newSickDays[d] = true);
-      setStats({...stats, sickDays: newSickDays});
+  const toggleRestDay = (day: string) => {
+      setStats(prev => {
+          const sickDays = { ...prev.sickDays };
+          if (sickDays[day]) delete sickDays[day]; else sickDays[day] = true;
+          return { ...prev, sickDays };
+      });
   };
 
   // Delete Session
@@ -960,6 +954,9 @@ const App: React.FC = () => {
                   setStats(prev => ({ ...prev, healthTrends: newTrends }));
               }
               setSessions(prev => prev.filter(s => s.recordingId !== id));
+          } else {
+              // Keep the session, but stop pointing at audio that no longer exists
+              setSessions(prev => prev.map(s => s.recordingId === id ? { ...s, recordingId: undefined } : s));
           }
       } catch(e) {
           console.error("Failed to delete recording", e);
@@ -1034,8 +1031,7 @@ const App: React.FC = () => {
 
   const navigate = (p: Page) => {
       setPage(p);
-      setHighlightedSessionId(null);
-      setHighlightedRecordingId(null);
+      setHighlight(null);
   };
 
   const todayPage = (
@@ -1070,7 +1066,7 @@ const App: React.FC = () => {
         />
         <p className="mt-3 text-[13px] text-text-muted">
           {latest
-            ? <>Last session: median <span className="font-mono tabular-nums text-text">{latest.stats.median}</span> Hz, <span className="font-mono tabular-nums text-text">{latest.stats.inRangePct}%</span> in range.{recentMedians.length > 1 && ' Grey marks are the sessions before.'}</>
+            ? <>Last session: median <span className="font-mono tabular-nums text-text">{latest.stats.median}</span>{' '}Hz, <span className="font-mono tabular-nums text-text">{latest.stats.inRangePct}%</span> in range.{recentMedians.length > 1 && ' Grey marks are the sessions before.'}</>
             : 'After your first session, your median pitch shows on this scale.'}
         </p>
       </section>
@@ -1172,56 +1168,94 @@ const App: React.FC = () => {
     </AnimatePresence>
   );
 
+  // --- PROGRESS ---
+  const titleOf = (s: TrainingSession) =>
+      s.mode === 'simple' ? 'Free session' : s.routineUsed === settings.currentRoutine.id ? settings.currentRoutine.name : 'Routine';
+
+  const trendPoints: TrendPoint[] = useMemo(() => {
+      const live: TrendPoint[] = sessions.map(s => {
+          const st = computePitchStats(s.pitchData, s.targetRange ?? settings.targetRange);
+          return { id: s.id, date: s.startTime, median: st.median, inRangePct: st.inRangePct, strain: sessionStrain(s) };
+      });
+      // "Persist Analytics": strain from deleted sessions lives on in stats.healthTrends (keyed by end time)
+      const ends = new Set(sessions.map(s => s.endTime));
+      const kept: TrendPoint[] = (stats.healthTrends || []).filter(t => !ends.has(t.date))
+          .map(t => ({ id: `kept-${t.date}`, date: t.date, median: null, inRangePct: 0, strain: strainFromEffort(t.effort), kept: true }));
+      return [...live, ...kept].sort((a, b) => a.date - b.date);
+  }, [sessions, stats.healthTrends, settings.targetRange]);
+
+  const longestStreak = useMemo(() => calculateStreaks(
+      Object.fromEntries(Object.keys(stats.history).map(k => [k, true])), stats.sickDays, settings.trainingDays
+  ).longestStreak, [stats.history, stats.sickDays, settings.trainingDays]);
+
+  const linkedRecordingIds = new Set(sessions.map(s => s.recordingId).filter(Boolean));
+  const otherRecordings = recordings.filter(r => !linkedRecordingIds.has(r.id));
+  const recordingMB = recordings.reduce((sum, r) => sum + (r.size || 0), 0) / 1e6;
+  const totalMinutes = Math.round(stats.totalTrainingTime / 60);
+
+  const openDay = (day: string) => {
+      const s = sessions.find(x => getLocalISODate(new Date(x.startTime)) === day);
+      if (s) jumpToSession(s.id);
+  };
+
   const progressPage = (
     <PageFrame title="Progress" wide>
-      <Section title="Overview">
-        <AnalyticsDashboard stats={stats} recordings={recordings} settings={settings} sessions={sessions} />
+      <Section title="Is your voice changing?">
+        <PitchTrend points={trendPoints} range={settings.targetRange} onSelect={jumpToSession} />
       </Section>
-      <Section title="Voice health">
-        <div className="h-52"><VocalHealthChart sessions={sessions} stats={stats} /></div>
+
+      <Section title="Then and now">
+        <CompareRecordings sessions={sessions} range={settings.targetRange} title={titleOf} />
       </Section>
+
+      <Section title="Consistency">
+        <p className="text-[15px] leading-relaxed text-text-muted mb-6 max-w-[68ch]">
+          Current streak <Num unit={plural(stats.currentStreak, 'day')}>{stats.currentStreak}</Num>, longest <Num unit={plural(longestStreak, 'day')}>{longestStreak}</Num>.{' '}
+          You trained on <Num unit={plural(Object.keys(stats.history).length, 'day')}>{Object.keys(stats.history).length}</Num> for{' '}
+          {totalMinutes >= 60 && <><Num unit="h">{Math.floor(totalMinutes / 60)}</Num> </>}<Num unit="min">{totalMinutes % 60}</Num> across{' '}
+          <Num unit={plural(stats.totalSessions, 'session')}>{stats.totalSessions}</Num>, with <Num unit="MB">{recordingMB.toFixed(1)}</Num> of recordings.
+        </p>
+        <ActivityCalendar
+          minutesByDay={stats.history}
+          restDays={stats.sickDays}
+          trainingDays={settings.trainingDays}
+          onToggleRest={toggleRestDay}
+          onOpenDay={openDay}
+        />
+      </Section>
+
       <Section title="Sessions">
-        <SessionHistory 
-            sessions={sessions} 
-            onUpdateSession={(s) => setSessions(prev => prev.map(old => old.id === s.id ? s : old))} 
-            onDeleteSession={handleDeleteSession} 
-            onBulkDelete={handleBulkDeleteSessions}
-            highlightedId={highlightedSessionId}
-            onJumpToRecording={jumpToRecording}
+        <SessionList
+          sessions={sessions}
+          range={settings.targetRange}
+          title={titleOf}
+          highlight={highlight}
+          syncDelete={settings.deleteSessionWithRecording}
+          onUpdateNote={(id, note) => setSessions(prev => prev.map(s => s.id === id ? { ...s, notes: note.trim() || undefined } : s))}
+          onDelete={handleDeleteSession}
+          onBulkDelete={handleBulkDeleteSessions}
+          onRemoveRecording={handleDeleteRecording}
         />
-      </Section>
-      <Section title="Recordings">
-        <RecordingsManager 
-            recordings={recordings} 
-            onDelete={handleDeleteRecording} 
-            highlightedId={highlightedRecordingId}
-            onJumpToSession={jumpToSession}
-            sessions={sessions}
-        />
-      </Section>
-      <Section title="Goals and achievements">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="min-h-[300px]">
-            <GoalsWidget 
-                goals={goals} 
-                onAddGoal={g => setGoals(p => [...p, g])} 
-                onRemoveGoal={id => setGoals(p => p.filter(g => g.id !== id))} 
-                onClaimGoal={handleClaimGoal}
-                onDeleteHistoryEntry={handleDeleteHistoryEntry}
-                stats={stats}
-            />
+        {otherRecordings.length > 0 && (
+          <div className="mt-10">
+            <h3 className="text-[15px] font-semibold mb-1">Recordings without a session</h3>
+            <p className="text-[13px] text-text-muted mb-3">Kept when their session was deleted.</p>
+            <OtherRecordings recordings={otherRecordings} onDelete={handleDeleteRecording} />
           </div>
-          <AchievementsWidget unlockedIds={stats.unlockedAchievements} />
-        </div>
+        )}
       </Section>
-      <Section title="Rest days">
-        <p className="text-[13.5px] text-text-muted mb-4 max-w-prose">Mark days you rested because you were ill or your voice was tired. Rest days never break your streak.</p>
-        <div className="max-w-md">
-          <CustomCalendar 
-              initialSelectedDates={stats.sickDays} 
-              onSave={(days) => { handleSaveSickDays(days); setStatusMessage('Rest days saved'); }} 
-              onCancel={() => {}} 
+
+      <Section title="Goals and achievements">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-12 gap-y-10">
+          <Goals
+            goals={goals}
+            stats={stats}
+            onAdd={g => setGoals(p => [...p, g])}
+            onRemove={id => setGoals(p => p.filter(g => g.id !== id))}
+            onClaim={handleClaimGoal}
+            onRemoveHistory={handleDeleteHistoryEntry}
           />
+          <Achievements unlockedIds={stats.unlockedAchievements} />
         </div>
       </Section>
     </PageFrame>
@@ -1294,7 +1328,7 @@ const App: React.FC = () => {
         />
 
         {/* Content pane: one raised surface with a concentric top-left corner, like Windows Settings */}
-        <main className="flex-1 min-w-0 relative bg-background rounded-tl-[10px] border-l border-t border-border overflow-hidden">
+        <main className="flex-1 min-w-0 relative bg-background rounded-tl-[10px] border-l border-t border-border overflow-clip">
           <AnimatePresence initial={false}>
             <motion.div
               key={page}
@@ -1345,6 +1379,10 @@ const App: React.FC = () => {
 };
 
 const EASE_OUT = [0.23, 1, 0.32, 1] as const;
+// A measurement: mono number, text unit, never split across lines
+const Num: React.FC<{ children: React.ReactNode; unit?: string }> = ({ children, unit }) =>
+  <span className="whitespace-nowrap"><span className="font-mono tabular-nums text-text">{children}</span>{unit && ` ${unit}`}</span>;
+const plural = (n: number, word: string) => (n === 1 ? word : `${word}s`);
 const MIN_SAVED_SECONDS = 30; // shorter sessions are treated as accidental until "Save anyway"
 
 // Left-anchored next to the nav like Windows Settings; `fill` lets an editor take the pane's remaining height

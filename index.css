@@ -124,3 +124,16 @@ input, textarea, select { caret-color: var(--col-primary); accent-color: var(--c
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
 }
+
+/* Seek bar: native range input styled as a 3px hairline with the played part in the accent */
+input.seek { appearance: none; height: 20px; background: transparent; cursor: pointer; }
+input.seek::-webkit-slider-runnable-track {
+  height: 3px; border-radius: 3px;
+  background: linear-gradient(to right, var(--col-primary) var(--pct), color-mix(in oklch, var(--text-main) 10%, transparent) var(--pct));
+}
+input.seek::-webkit-slider-thumb {
+  appearance: none; width: 11px; height: 11px; margin-top: -4px; border-radius: 50%;
+  background: var(--col-primary); opacity: 0; transition: opacity 150ms var(--ease-out);
+}
+input.seek:hover::-webkit-slider-thumb, input.seek:focus-visible::-webkit-slider-thumb { opacity: 1; }
+input.seek:focus-visible { border-radius: 6px; }

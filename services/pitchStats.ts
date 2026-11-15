@@ -26,6 +26,28 @@ export const computePitchStats = (data: PitchDataPoint[] | undefined, range: Pit
   };
 };
 
+// Median voiced pitch per time bucket (one bucket ≈ one pixel); null where nothing was voiced
+export const bucketPitch = (data: PitchDataPoint[], durationMs: number, buckets: number): (number | null)[] => {
+  const bins: number[][] = Array.from({ length: buckets }, () => []);
+  for (const p of data) {
+    if (p.pitch <= 0 || p.time < 0 || p.time > durationMs) continue;
+    bins[Math.min(buckets - 1, Math.floor((p.time / durationMs) * buckets))].push(p.pitch);
+  }
+  return bins.map(b => {
+    if (!b.length) return null;
+    b.sort((x, y) => x - y);
+    return b[Math.floor(b.length / 2)];
+  });
+};
+
+// "Then vs now": mean of the first and last few values, rounded (needs at least 2 values)
+export const trendEnds = (values: number[], n = 3): { from: number; to: number } | null => {
+  if (values.length < 2) return null;
+  const k = Math.min(n, Math.floor(values.length / 2));
+  const mean = (a: number[]) => Math.round(a.reduce((s, v) => s + v, 0) / a.length);
+  return { from: mean(values.slice(0, k)), to: mean(values.slice(-k)) };
+};
+
 // ±1.5 semitones around a single legacy target pitch
 export const rangeAround = (hz: number): PitchRange => ({
   low: Math.round(hz * Math.pow(2, -1.5 / 12)),

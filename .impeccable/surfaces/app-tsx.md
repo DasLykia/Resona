@@ -2,7 +2,7 @@
 version: 1
 slug: "app-tsx"
 primary_target: "App.tsx"
-related_targets: ["index.css","components/session/FocusSession.tsx"]
+related_targets: ["index.css","components/session/FocusSession.tsx","components/progress/SessionList.tsx"]
 ---
 
 Scope: the app shell (window, title bar, sidebar, page frame) and the shared design system every screen inherits. Mode: Operate.
@@ -26,4 +26,6 @@ FINISH: unreviewed and undocumented is unfinished; this build ends with the fini
 
 Phase 2 (built): Today leads with Start, then "Your voice" (the range band with recent session medians), the routine list and the focus note. A session is a full-window focus mode: mic check, then the current exercise, timer and live pitch drawn against the range band, then an inline summary (time, % in range, median, the band with this session’s distribution, recording playback, one-tap strain, optional note; autosaved). Focus mode adds a display tier for reading at a distance: 34px exercise title, 64px mono timer, 34px mono pitch readout, 20px prompt phrase.
 
-Unresolved: Progress (phase 3) and Routines, Settings, command menu (phase 4) still carry the legacy look.
+Phase 3 (built): Progress answers "is my voice changing?" first: a per-session column chart (median pitch over the band, time-in-range bars, strain marks) with a then-vs-now sentence; then "Then and now" (two session pickers, A/B playback that keeps position, both pitch traces over the band); then Consistency (streak sentence, two-month calendar: trained days tinted by minutes, click an empty past day to toggle a rest day, click a trained day to open its session); then Sessions (searchable table, expandable detail with pitch trace, recording, note and delete via confirm popover, select mode for bulk delete, recordings without a session); then Goals and Achievements as ruled lists. Every window.confirm in this area is replaced by a confirm popover from its trigger.
+
+Unresolved: Routines, Settings and the command menu (phase 4) still carry the legacy look.

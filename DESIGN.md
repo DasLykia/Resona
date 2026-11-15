@@ -138,6 +138,14 @@ components:
     typography: "{typography.control}"
     rounded: "{rounded.control}"
     height: "40px"
+  calendar-day:
+    textColor: "{colors.text-main}"
+    typography: "{typography.measure}"
+    rounded: "{rounded.control}"
+    height: "36px"
+  calendar-day-trained:
+    backgroundColor: "{colors.primary}"
+    textColor: "{colors.on-primary}"
 ---
 
 # Design System: Resona
@@ -152,7 +160,9 @@ Density is calm and desktop-native: 13 to 14px text, 32px controls, left-anchore
 
 Motion is quick, interruptible and physical without bounce: ease-out for entrances, ease-in-out for moves, exits shorter than entrances, a 0.97 press, and indicators that slide between positions on a shared layout id.
 
-A session is a full-window focus mode. It keeps the same palette, hairlines and radii but adds a display tier read from a step back from the screen, and the accent inside it carries only signal: a primary action, a selection, progress (block progress, the recording scrubber) and "in range". Progress, Routines and Settings internals still carry the pre-redesign look (scheduled for phases 3 and 4); they are drift, not reference.
+A session is a full-window focus mode. It keeps the same palette, hairlines and radii but adds a display tier read from a step back from the screen, and the accent inside it carries only signal: a primary action, a selection, progress (block progress, the recording scrubber) and "in range".
+
+Progress is a reading page, not a dashboard: ruled sections that each answer one question, charts that all share the range band, sessions in a ruled table that expand in place, and destructive actions that confirm in a popover grown from their own trigger. The Routines page (RoutineEditor, PlanEditor), the SettingsForm and LevelProgressModal still carry the pre-redesign look (scheduled for phase 4); they are drift, not reference.
 
 **Key Characteristics:**
 - Two-layer shell: Mica-tinted nav layer, one raised content pane with a concentric 10px top-left corner.
@@ -163,6 +173,7 @@ A session is a full-window focus mode. It keeps the same palette, hairlines and 
 - Text first: a custom 16px, 1.5-stroke icon set used only for transport and system controls.
 - The range band is the one signature object, drawn with the same tint and edge recipe wherever pitch appears.
 - Two type tiers: the page tier for arm's-length reading and a focus tier for reading at a distance during a session.
+- No native dialogs: every destructive action confirms in a popover from the button that asked.
 
 ## Colors
 
@@ -191,7 +202,7 @@ All values below are resolved for the default Violet theme (accent source #8b5cf
 ### Named Rules
 **The Two Sources Rule.** No colour is hand-picked per surface. Every token derives from `--accent-src` / `--accent2-src` through fixed OKLCH lightness and capped chroma, so a new theme can never break contrast.
 
-**The One Accent Rule.** The accent marks exactly three things: the primary action, the current selection, and "in range". If it appears for decoration, it is wrong.
+**The One Accent Rule.** The accent marks exactly four things: the primary action, the current selection, "in range", and progress (block progress, seek fill, goal bars, trained-day tint). If it appears for decoration, it is wrong.
 
 **The Range Colour Rule.** Pitch status has three colours only: accent for "In range", ink for "Below range" and "Above range", muted for "Listening". Out of range is never red; danger is kept for strain and errors.
 
@@ -227,13 +238,17 @@ Focus tier, used only inside a session's focus mode:
 
 **The Mono Numbers, Sans Units Rule.** In running text the number is Geist Mono in ink and the unit stays in Geist ("**12** min **4** s", "**68**% ... inside **239–285** Hz").
 
+**The Unbroken Measurement Rule.** A measurement and its unit never split across lines: the number and unit are one no-wrap unit (the `Num` helper: mono number in ink, a space, the unit in Geist).
+
 **The Sentence Case Rule.** Headings, labels and buttons are sentence case at normal tracking. There are no uppercase tracked labels and no small text sitting above a heading.
 
 ## Layout
 
-The window is a column: a 36px title bar, then a row of a 216px sidebar and the content pane. The title bar leaves 148px clear on the right for the native caption buttons and is a drag region. The content pane is one raised surface with a hairline on its top and left edges and a 10px top-left corner, the only rounded corner in the shell.
+The window is a column: a 36px title bar, then a row of a 216px sidebar and the content pane. The title bar leaves 148px clear on the right for the native caption buttons and is a drag region. The content pane is one raised surface with a hairline on its top and left edges and a 10px top-left corner, the only rounded corner in the shell; it clips its overflow (`overflow: clip`) so page transitions never spill past that corner.
 
 Pages sit left-anchored next to the nav, like Windows Settings, in a PageFrame: 40px side padding, 28px top, 64px bottom, max width 1000px (760px narrow for Settings, 1200px wide for Progress). The page header is 28px above content. Sections stack with 40px gap plus 32px padding above a hairline; the first section has neither. Lists are rows of 10px vertical padding divided by hairlines, laid out as a grid of index, label and right-aligned measurement. The Today page is a single hairline-bounded band (title and summary left, Change and Start right), then "Your voice" (the range band with recent session medians and a one-line muted summary), the routine list and the Focus note.
+
+The Progress page uses the wide frame and stacks five sections in a fixed order, each heading a plain question or name: "Is your voice changing?" (pitch trend), "Then and now" (compare recordings), "Consistency" (streak sentence and two-month calendar), "Sessions" (the session table, then recordings without a session), "Goals and achievements" (ruled lists). Charts fill the column width; nothing sits in a card.
 
 Focus mode covers the whole window below the title bar, sidebar included, on the app ground with a hairline at its top. Its gutters are 48px. A routine session stacks: the block-progress hairline (16px from the top), a header with the focus title left and the timer right, the prompt row, the live pitch chart filling the remaining height (220px minimum), and a 64px footer above a hairline, laid out as three columns: End session left, transport centred, position and "Next: title" right. The mic check (560px column), summary (760px) and "Session not saved" screens are left-anchored columns inside the same layer.
 
@@ -242,11 +257,11 @@ Focus mode covers the whole window below the title bar, sidebar included, on the
 Flat at rest. Depth comes from tonal layering (nav layer, app ground, raised surface) and alpha hairlines, not shadows. One shadow exists, for things that float above the page.
 
 ### Shadow Vocabulary
-- **Pop** (`box-shadow: 0 1px 2px oklch(0 0 0 / 0.06), 0 8px 24px -6px oklch(0 0 0 / 0.16)` light; `0 1px 2px oklch(0 0 0 / 0.3), 0 12px 32px -8px oklch(0 0 0 / 0.55)` dark): dialogs, popovers and menus only.
+- **Pop** (`box-shadow: 0 1px 2px oklch(0 0 0 / 0.06), 0 8px 24px -6px oklch(0 0 0 / 0.16)` light; `0 1px 2px oklch(0 0 0 / 0.3), 0 12px 32px -8px oklch(0 0 0 / 0.55)` dark): dialogs, popovers, menus and chart tooltips only.
 - **Segment lift** (`0 1px 2px oklch(0 0 0 / 0.12)`, light mode only): the selected thumb of a segmented control. In dark it becomes a 12% ink fill instead.
 
 ### Named Rules
-**The Float-Only Shadow Rule.** A shadow means the element floats above the page (dialog, popover, menu). Nothing resting in the page flow gets one.
+**The Float-Only Shadow Rule.** A shadow means the element floats above the page (dialog, popover, menu, tooltip). Nothing resting in the page flow gets one.
 
 ## Shapes
 
@@ -286,7 +301,7 @@ Quiet, compact and tactile.
 A custom set on a 16px grid with 1.5px round-capped strokes, so icons match Geist's stroke weight. Used only for transport (play, pause, previous, next), prompt stepping (chevrons) and system controls (close). Transport glyphs fill their triangles with the stroke colour because filled shapes read better at small sizes; pause is two 2.25px strokes. The app mark is three waveform bars.
 
 ### Range band (signature)
-The user's target pitch range as a tinted band on a log-frequency scale (70 to 420 Hz), drawn with one recipe everywhere pitch appears: Today's "Your voice", the session summary and, rotated to horizontal over time, the live chart.
+The user's target pitch range as a tinted band on a log-frequency scale (70 to 420 Hz), drawn with one recipe everywhere pitch appears: Today's "Your voice", the session summary and, rotated to horizontal over time, the live chart and every Progress chart (pitch trend, pitch trace, then and now).
 - **Recipe:** accent at 13% fill with 1px accent edge lines at 50%, over a strong-hairline baseline. Ticks at 80, 100, 150, 200, 250, 300 and 400 in 12px muted mono, "Hz" only after the last.
 - **Edge fade:** the baseline, band and density fade out over the outer 3% of the scale through an alpha mask, so the scale has no hard ends.
 - **Markers:** 2px fully rounded lines. The current median is accent at full height with its value above in 12px accent mono; earlier sessions are ink at 35%, half height.
@@ -324,7 +339,47 @@ A small text confirmation ("Saved") appears beside the heading it confirms in 12
 When an icon button swaps glyphs (play and pause, in the transport and recording player), the old glyph leaves and the new one enters with opacity, scale 0.6 and a 3px blur, 180ms in and 140ms out (popLayout). Prompt phrases crossfade with a 4px blur, 200ms in and 160ms out.
 
 ### Recording player
-A secondary icon button, "Recording" in 13.5px, a 3px ink 10% scrubber with an accent fill (click to seek), and mono "0:42 / 3:10" in 12.5px muted.
+A secondary icon button (play and pause crossfade), "Recording" in 13.5px, the seek bar, and mono "0:42 / 3:10" in 12.5px muted. `StoredRecording` loads the audio from IndexedDB by id and renders the same player; recordings always render inside their session's detail.
+- **Seek bar:** a native range input styled as a 3px fully rounded hairline: accent fill up to the playhead, ink 10% after it, 20px tall hit area. An 11px accent thumb fades in (150ms) only on hover and keyboard focus. It steps by 1 second, so arrow keys seek in seconds.
+
+### Confirm button
+Replaces every `window.confirm`. The trigger is an ordinary Button (ghost by default, danger or secondary allowed, sm); pressing it opens the anchored Popover from that trigger: a 256px column with the consequence in 13.5px relaxed text, then right-aligned sm ghost Cancel (focused first) and a danger button whose label names the act ("Delete 3 sessions").
+
+### Grid labels
+Every Progress chart draws hairline grid lines with 12px muted mono Hz labels in a left gutter, chosen from round values and thinned so no two labels sit closer than 32px.
+
+**The 32px Label Rule.** Grid labels are thinned to at least 32px apart; a chart shows fewer labels before it lets them crowd.
+
+### Pitch trend
+A per-session column chart, one column per session, oldest left. Three stacked rows share the columns:
+- **Median panel:** the range band (one recipe) with a 1.5px ink 35% line through session medians that draws in over 250ms ease-out; each median is a dot, accent when inside the band and ink outside.
+- **Time-in-range row:** a bar per session of its share of time in range.
+- **Strain row:** one mark per session; strain 4 to 5 in danger, 3 in ink at 45%, 1 to 2 in ink at 20%. Sessions that were deleted keep only this mark (`kept`), and their columns are not clickable.
+- **Hover:** a floating tooltip (8px raised surface, hairline, Pop shadow, 12.5px) with date, mono median "Hz" and in-range percentage, entering over 150ms; clicking a column jumps to that session in the table.
+- **Sentence:** beneath the chart, one then-vs-now sentence in the Mono Numbers, Sans Units form.
+
+### Pitch trace and Then and now
+- **Pitch trace:** the static pitch-over-time trace of one session, medians from `bucketPitch` at about one point per 2px, over the band with grid lines; 2px round accent trace (1.75px ink 45% for a second trace) and a 1px ink 60% playhead tied to the recording.
+- **Then and now:** two native select pickers labelled "Then" (muted) and "Now" (accent), each with a muted stat line. Both traces share one chart: Then in ink at 45%, Now in accent. Playback switches A/B through a Segmented control and keeps its position, so the same moment plays in both.
+
+### Activity calendar
+Two months side by side, weeks starting Monday. Day cells are 36px, 6px radius, mono 12.5px numbers.
+- **Tint:** trained days fill in three steps by minutes: accent at 25% (under 10 min), 60% (10 to 20 min), full accent with on-accent text (20 min or more).
+- **Rest days:** a 1px dashed ink outline inset 4px; clicking an empty past day toggles it. Clicking a trained day opens its session.
+- **Today:** semibold with a 2px accent underline at 4px offset.
+- **Paging:** months slide horizontally 24px in the paging direction, 220ms in and 180ms out, ease-out. A legend explains tint and rest days in 12.5px muted.
+
+### Session table
+A ruled table, not cards: rows divided by hairlines, mono date and duration, a chevron that rotates 90° over 200ms when the row is open.
+- **Search** filters rows; **select mode** adds checkboxes and a bulk delete through the Confirm button.
+- **Detail:** a row expands in place (height and opacity, 240ms in, 190ms out) into the pitch trace, the recording, the note and a delete Confirm button. Rows reflow with a 220ms ease-in-out layout tween.
+- **Jump highlight:** a row reached from the trend or calendar scrolls to centre and carries a 6% accent wash that fades out after 1.6s.
+- **Other recordings:** only recordings whose session no longer exists get their own ruled list beneath, with mono minutes and MB and an inline player.
+
+**The Recording Lives In Its Session Rule.** A recording is shown inside its session's detail. Only orphaned recordings get a list of their own.
+
+### Ruled lists (goals and achievements)
+Goals and achievements are hairline-ruled rows. A goal row carries its label, its actions inline in the row (sm "Complete goal" when done, a Remove Confirm button; no menus), and a right-aligned mono "n/m" with its unit; beneath it a 3px fully rounded progress bar on an ink 10% track fills in accent over 250ms ease-out. Completed goals hide behind a muted "Show completed goals (n)" toggle that expands in place (220ms in, 180ms out).
 
 ### Session flow
 - **Focus layer:** enters with opacity and scale from 0.985 over 220ms ease-out, exits over 180ms; its steps (mic check, training, summary) crossfade 200 / 160ms.
@@ -352,6 +407,11 @@ A secondary icon button, "Recording" in 13.5px, a 3px ink 10% scrubber with an a
 - **Do** float small editors in the anchored Popover, growing from and shrinking back into their trigger.
 - **Do** autosave sessions of 30 seconds or more, and ask for "Save anyway" below that.
 - **Do** confirm a save with the 240ms confirm pulse beside what was saved.
+- **Do** keep a measurement and its unit on one line (the `Num` helper, no-wrap).
+- **Do** draw the range band with the same recipe on every chart that shows pitch, including Progress charts.
+- **Do** confirm destructive actions with the Confirm button: a popover from the trigger with Cancel and a danger action that names the act.
+- **Do** show a recording inside its session; give only orphaned recordings their own list.
+- **Do** thin chart grid labels so they sit at least 32px apart.
 
 ### Don't:
 - **Don't** use cards as structure: no grids of bordered or shadowed boxes holding page content.
@@ -365,4 +425,5 @@ A secondary icon button, "Recording" in 13.5px, a 3px ink 10% scrubber with an a
 - **Don't** use the accent decoratively inside focus mode; every accent there is a primary action, a selection, progress or "in range".
 - **Don't** colour out-of-range pitch red.
 - **Don't** fire confetti for ordinary session ends, or in colours outside the palette.
-- **Don't** treat Progress, Routines or Settings internals as reference; they are legacy drift until phases 3 and 4.
+- **Don't** use `window.confirm` or any native dialog for a destructive action.
+- **Don't** treat the Routines page (RoutineEditor, PlanEditor), the SettingsForm or LevelProgressModal as reference; they are legacy drift until phase 4.
