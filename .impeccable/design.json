@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-11-15T23:00:07.064Z",
+  "generatedAt": "2026-11-15T23:44:19.598Z",
   "title": "Design System: Resona",
   "extensions": {
     "colorMeta": {
@@ -429,14 +429,34 @@
         "purpose": "Routine exercise rows reordered by drag."
       },
       {
-        "name": "routine-indicator",
-        "value": "shared layoutId, 220ms ease-in-out",
-        "purpose": "Selected routine bar in the Routines list."
-      },
-      {
         "name": "level-meter",
         "value": "width, 250ms ease-out",
         "purpose": "XP meter in level details."
+      },
+      {
+        "name": "sidebar-expand",
+        "value": "height 220ms ease-in-out in, 180ms out; opacity 180 / 120ms",
+        "purpose": "The active sidebar section opening into its sub-pages."
+      },
+      {
+        "name": "page-hint",
+        "value": "height + opacity, 220ms in, 180ms out, ease-out",
+        "purpose": "A page hint folding away on Got it."
+      },
+      {
+        "name": "setup-step",
+        "value": "popLayout, x 24px in over 220ms, -16px out over 180ms, ease-out",
+        "purpose": "Setup steps sliding in the direction of travel."
+      },
+      {
+        "name": "setup-choice",
+        "value": "shared layoutId, 220ms ease-in-out",
+        "purpose": "Accent bar on the selected Setup direction."
+      },
+      {
+        "name": "session-pane",
+        "value": "opacity + y 6px, 200ms in, 120ms out",
+        "purpose": "Sessions detail pane switching sessions on wide windows."
       }
     ],
     "layout": [
@@ -454,7 +474,7 @@
       },
       {
         "name": "page-max",
-        "value": "1000px (narrow 760px, wide 1200px)"
+        "value": "1000px (narrow 760px, wide 2200px); side padding 40px, 56px from 2xl"
       },
       {
         "name": "focus-x",
@@ -466,7 +486,7 @@
       },
       {
         "name": "focus-columns",
-        "value": "summary 760px, mic check 560px"
+        "value": "centred: summary 760px, mic check and not saved 560px, Setup 600px"
       },
       {
         "name": "pitch-scale",
@@ -478,15 +498,11 @@
       },
       {
         "name": "calendar",
-        "value": "two months, Monday first, 36px day cells"
-      },
-      {
-        "name": "routines-columns",
-        "value": "list 10.5rem (13rem from xl), gap 24px (40px from xl)"
+        "value": "two months (three from 2xl), Monday first, 36px day cells"
       },
       {
         "name": "settings-row",
-        "value": "14px vertical padding, hint max 52ch, groups 40px apart"
+        "value": "14px vertical padding, hint max 52ch; one group per page, extra groups 40px apart"
       },
       {
         "name": "command-menu",
@@ -495,6 +511,28 @@
       {
         "name": "hit-slop",
         "value": "4px buttons and swatches, 6px text buttons, 8px switches"
+      },
+      {
+        "name": "wide-columns",
+        "value": "2xl (1536px): Today 1fr | 0.9fr; Then and now 24rem | chart; Sessions list | 34rem sticky pane; routine editor | 22rem aside"
+      },
+      {
+        "name": "chart-heights",
+        "value": "Then and now clamp(innerHeight - 380, 320, 640); pitch trend median panel clamp(width * 0.2, 190, 420)"
+      },
+      {
+        "name": "nav-sub-item",
+        "value": "32px tall, 28px left padding, 13px"
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "xl",
+        "value": "1280px"
+      },
+      {
+        "name": "2xl",
+        "value": "1536px"
       }
     ]
   },
@@ -543,9 +581,9 @@
       "name": "Sidebar Nav",
       "kind": "nav",
       "refersTo": "nav-item",
-      "description": "Labeled sidebar items with a sliding 3px accent bar on the active item.",
-      "html": "<nav class=\"ds-nav\"><button class=\"ds-nav-item ds-nav-on\" aria-current=\"page\"><span class=\"ds-nav-bar\"></span>Today</button><button class=\"ds-nav-item\">Progress</button><button class=\"ds-nav-item\">Routines</button></nav>",
-      "css": ".ds-nav{display:flex;flex-direction:column;gap:2px;width:200px;padding:8px;background:var(--bg-sidebar)} .ds-nav-item{position:relative;height:36px;padding:0 12px 0 16px;border:0;border-radius:6px;background:transparent;color:var(--text-muted);text-align:left;font:400 13.5px Geist,system-ui,sans-serif;cursor:pointer;transition:background-color 150ms var(--ease-out),color 150ms var(--ease-out),transform 150ms var(--ease-out)} .ds-nav-item:hover{color:var(--text-main);background:color-mix(in oklch,var(--text-main) 4.5%,transparent)} .ds-nav-item:active{transform:scale(0.97)} .ds-nav-item:focus-visible{outline:2px solid var(--col-primary);outline-offset:2px} .ds-nav-on{color:var(--text-main);font-weight:500;background:color-mix(in oklch,var(--text-main) 7%,transparent)} .ds-nav-bar{position:absolute;left:0;top:50%;margin-top:-8px;width:3px;height:16px;border-radius:9999px;background:var(--col-primary)}"
+      "description": "Labeled sidebar; only the active section expands into 32px sub-items. One 3px accent bar slides across every item.",
+      "html": "<nav class=\"ds-nav\"><button class=\"ds-nav-item\">Today</button><button class=\"ds-nav-item ds-nav-open\" aria-expanded=\"true\">Progress</button><button class=\"ds-nav-item ds-nav-sub ds-nav-on\" aria-current=\"page\"><span class=\"ds-nav-bar\"></span>Overview</button><button class=\"ds-nav-item ds-nav-sub\">Then and now</button><button class=\"ds-nav-item ds-nav-sub\">Calendar</button><button class=\"ds-nav-item\">Routines</button></nav>",
+      "css": ".ds-nav{display:flex;flex-direction:column;gap:2px;width:200px;padding:8px;background:var(--bg-sidebar)} .ds-nav-item{position:relative;height:36px;padding:0 12px 0 16px;border:0;border-radius:6px;background:transparent;color:var(--text-muted);text-align:left;font:400 13.5px Geist,system-ui,sans-serif;cursor:pointer;transition:background-color 150ms var(--ease-out),color 150ms var(--ease-out),transform 150ms var(--ease-out)} .ds-nav-item:hover{color:var(--text-main);background:color-mix(in oklch,var(--text-main) 4.5%,transparent)} .ds-nav-item:active{transform:scale(0.97)} .ds-nav-item:focus-visible{outline:2px solid var(--col-primary);outline-offset:2px} .ds-nav-on{color:var(--text-main);font-weight:500;background:color-mix(in oklch,var(--text-main) 7%,transparent)} .ds-nav-bar{position:absolute;left:0;top:50%;margin-top:-8px;width:3px;height:16px;border-radius:9999px;background:var(--col-primary)} .ds-nav-open{color:var(--text-main);font-weight:500} .ds-nav-sub{height:32px;padding-left:28px;font-size:13px}"
     },
     {
       "name": "Routine Row List",
@@ -568,7 +606,7 @@
       "kind": "card",
       "refersTo": "dialog",
       "description": "Floating raised surface with Pop shadow, hairline header, ghost close.",
-      "html": "<div class=\"ds-dialog\" role=\"dialog\"><div class=\"ds-dialog-h\"><h2>Welcome to Resona</h2><button class=\"ds-x\" aria-label=\"Close\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\"><path d=\"M4 4l8 8M12 4l-8 8\"/></svg></button></div><div class=\"ds-dialog-b\">Start a session from Today whenever you are ready to train.</div></div>",
+      "html": "<div class=\"ds-dialog\" role=\"dialog\"><div class=\"ds-dialog-h\"><h2>Level 4</h2><button class=\"ds-x\" aria-label=\"Close\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\"><path d=\"M4 4l8 8M12 4l-8 8\"/></svg></button></div><div class=\"ds-dialog-b\">Earn XP for every minute you train.</div></div>",
       "css": ".ds-dialog{width:360px;background:var(--bg-surface);border:1px solid var(--border-color);border-radius:10px;box-shadow:var(--shadow-pop);font:400 13.5px/1.6 Geist,system-ui,sans-serif;color:var(--text-main)} .ds-dialog-h{display:flex;align-items:center;justify-content:space-between;height:48px;padding:0 12px 0 20px;border-bottom:1px solid var(--border-color)} .ds-dialog-h h2{margin:0;font-size:15px;font-weight:600} .ds-x{display:grid;place-items:center;width:32px;height:32px;border:0;border-radius:6px;background:transparent;color:var(--text-muted);cursor:pointer} .ds-x:hover{color:var(--text-main);background:color-mix(in oklch,var(--text-main) 6%,transparent)} .ds-x:focus-visible{outline:2px solid var(--col-primary);outline-offset:2px} .ds-dialog-b{padding:20px}"
     },
     {
@@ -642,13 +680,31 @@
       "description": "Ctrl+K dialog: search field, grouped results, active row on a 7% ink wash.",
       "html": "<div class=\"ds-cmd\" role=\"dialog\" aria-label=\"Command menu\"><div class=\"ds-cmd-f\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\"><circle cx=\"7\" cy=\"7\" r=\"4.25\"/><path d=\"M10.25 10.25L13.5 13.5\"/></svg><input role=\"combobox\" aria-expanded=\"true\" placeholder=\"Go to a page, start a session, find a date…\"/></div><div class=\"ds-cmd-l\" role=\"listbox\"><div class=\"ds-cmd-g\">Go to</div><div role=\"option\" aria-selected=\"true\" class=\"ds-cmd-i ds-on\"><span>Progress</span></div><div role=\"option\" aria-selected=\"false\" class=\"ds-cmd-i\"><span>Routines</span></div><div class=\"ds-cmd-g\">Start</div><div role=\"option\" aria-selected=\"false\" class=\"ds-cmd-i\"><span>Feminization basics</span><small>18 min</small></div></div></div>",
       "css": ".ds-cmd{width:560px;background:var(--bg-surface);border:1px solid var(--border-color);border-radius:10px;box-shadow:var(--shadow-pop);overflow:hidden;color:var(--text-main);animation:ds-cmd-in 180ms cubic-bezier(0.23,1,0.32,1)} @keyframes ds-cmd-in{from{opacity:0;transform:translateY(-6px) scale(.97)}} .ds-cmd-f{display:flex;align-items:center;gap:12px;height:48px;padding:0 16px;border-bottom:1px solid var(--border-color);color:var(--text-muted)} .ds-cmd-f input{flex:1;border:0;outline:none;background:transparent;color:var(--text-main);font:400 14.5px Geist,system-ui,sans-serif} .ds-cmd-l{padding:6px} .ds-cmd-g{padding:10px 12px 4px;font:400 12px Geist,system-ui,sans-serif;color:var(--text-muted)} .ds-cmd-i{display:flex;align-items:baseline;justify-content:space-between;gap:16px;padding:8px 12px;border-radius:6px;cursor:pointer;font:400 13.5px Geist,system-ui,sans-serif} .ds-cmd-i:hover,.ds-cmd-i.ds-on{background:color-mix(in oklch,var(--text-main) 7%,transparent)} .ds-cmd-i small{font-size:12.5px;color:var(--text-muted)}"
+    },
+    {
+      "name": "This Week",
+      "kind": "custom",
+      "refersTo": "week-day",
+      "description": "Seven ruled cells; only trained days are tinted, rest days dashed, only Missed in ink.",
+      "html": "<div class=\"ds-week\"><button class=\"ds-wd ds-wd-on\"><span>Mon</span><b>14 min</b></button><button class=\"ds-wd ds-wd-rest\"><span>Tue</span><b>Rest</b></button><button class=\"ds-wd\"><span>Wed</span><b class=\"ds-ink\">Missed</b></button><button class=\"ds-wd\"><span class=\"ds-today\">Thu</span><b>Today</b></button><button class=\"ds-wd\"><span>Fri</span><b>Planned</b></button><button class=\"ds-wd\"><span>Sat</span><b>Off</b></button><button class=\"ds-wd\"><span>Sun</span><b>Off</b></button></div>",
+      "css": ".ds-week{display:grid;grid-template-columns:repeat(7,1fr);border-top:1px solid var(--border-color);border-bottom:1px solid var(--border-color);font-family:Geist,system-ui,sans-serif;max-width:560px} .ds-week>*+*{border-left:1px solid var(--border-color)} .ds-wd{margin:4px;height:56px;border:0;border-radius:6px;padding:6px 8px;display:flex;flex-direction:column;justify-content:space-between;align-items:flex-start;background:transparent;cursor:pointer;transition:background-color 150ms var(--ease-out),transform 150ms var(--ease-out)} .ds-wd:hover{background:color-mix(in oklch,var(--text-main) 5%,transparent)} .ds-wd:active{transform:scale(0.97)} .ds-wd:focus-visible{outline:2px solid var(--col-primary);outline-offset:2px} .ds-wd span{font-size:12px;color:var(--text-muted)} .ds-wd b{font-weight:400;font-size:12.5px;color:var(--text-muted)} .ds-wd .ds-ink{color:var(--text-main)} .ds-today{color:var(--text-main)!important;font-weight:600;text-decoration:underline 2px var(--col-primary);text-underline-offset:4px} .ds-wd-on,.ds-wd-on:hover{background:color-mix(in oklch,var(--col-primary) 16%,transparent)} .ds-wd-on b{color:var(--col-primary);font-weight:500;font-family:\"Geist Mono\",Consolas,monospace;font-variant-numeric:tabular-nums} .ds-wd-rest{outline:1px dashed color-mix(in oklch,var(--text-main) 40%,transparent);outline-offset:-2px}"
+    },
+    {
+      "name": "Page Hint",
+      "kind": "custom",
+      "refersTo": "page-hint",
+      "description": "One muted sentence under the page title with a Got it text button; dismissed for good.",
+      "html": "<p class=\"ds-hint\">Each column is one session: its median pitch against your target range. <button class=\"ds-hint-b\">Got it</button></p>",
+      "css": ".ds-hint{margin:0;max-width:72ch;font:400 13.5px/1.625 Geist,system-ui,sans-serif;color:var(--text-muted)} .ds-hint-b{position:relative;margin-left:4px;padding:0;border:0;background:none;font:inherit;color:var(--text-main);cursor:pointer;text-decoration:underline;text-decoration-color:var(--border-strong);text-underline-offset:3px;transition:text-decoration-color 150ms var(--ease-out)} .ds-hint-b::before{content:\"\";position:absolute;inset:-6px} .ds-hint-b:hover{text-decoration-color:var(--text-main)} .ds-hint-b:focus-visible{outline:2px solid var(--col-primary);outline-offset:2px;border-radius:4px}"
     }
   ],
   "narrative": {
     "northStar": "The Quiet Utility",
-    "overview": "Resona looks like a well-made piece of Windows itself: a Mica nav layer, a 36px custom title bar with native caption buttons, a labeled sidebar like Windows Settings, and one raised content pane that holds the work. Nothing competes for attention. Hierarchy comes from type weight, alpha hairlines and space, never from boxes, glows or badges. The one recurring object is the user's voice range; everything else stays out of its way.\n\nDensity is calm and desktop-native: 13 to 14px text, 32px controls, left-anchored content columns that cap at 1000px. Every colour is derived at runtime from two accent source colours (the level-unlocked theme), and OKLCH relative-colour syntax normalises lightness so every theme lands equally calm and legible, in light and dark.\n\nMotion is quick, interruptible and physical without bounce: ease-out for entrances, ease-in-out for moves, exits shorter than entrances, a 0.97 press, and indicators that slide between positions on a shared layout id.\n\nA session is a full-window focus mode. It keeps the same palette, hairlines and radii but adds a display tier read from a step back from the screen, and the accent inside it carries only signal: a primary action, a selection, progress (block progress, the recording scrubber) and \"in range\".\n\nProgress is a reading page, not a dashboard: ruled sections that each answer one question, charts that all share the range band, sessions in a ruled table that expand in place, and destructive actions that confirm in a popover grown from their own trigger.\n\nRoutines and Settings are working pages edited in place: routines in a two-column list and editor with ruled, draggable exercise rows; settings as Windows Settings rows that apply the moment they change, with no Save button. A Ctrl+K command menu reaches every page and action, entered from one Search row at the top of the sidebar. Every surface now follows this system; no pre-redesign component remains.",
+    "overview": "Resona looks like a well-made piece of Windows itself: a Mica nav layer, a 36px custom title bar with native caption buttons, a labeled sidebar like Windows Settings, and one raised content pane that holds the work. Nothing competes for attention. Hierarchy comes from type weight, alpha hairlines and space, never from boxes, glows or badges. The one recurring object is the user's voice range; everything else stays out of its way.\n\nDensity is calm and desktop-native: 13 to 14px text, 32px controls, left-anchored content columns that cap at 1000px; from 1536px wide pages run up to 2200px and split into columns, so a large monitor fills with content rather than margin. Every colour is derived at runtime from two accent source colours (the level-unlocked theme), and OKLCH relative-colour syntax normalises lightness so every theme lands equally calm and legible, in light and dark.\n\nMotion is quick, interruptible and physical without bounce: ease-out for entrances, ease-in-out for moves, exits shorter than entrances, a 0.97 press, and indicators that slide between positions on a shared layout id.\n\nA session is a full-window focus mode. It keeps the same palette, hairlines and radii but adds a display tier read from a step back from the screen, and the accent inside it carries only signal: a primary action, a selection, progress (block progress, the recording scrubber) and \"in range\".\n\nProgress is reading, not a dashboard: five sub-pages that each answer one question, charts that all share the range band, sessions in a ruled table with a detail pane, and destructive actions that confirm in a popover grown from their own trigger.\n\nRoutines and Settings are working pages edited in place: each routine is its own page, listed in the sidebar, with its name as the editable page title and ruled, draggable exercise rows; settings are one page per group of Windows Settings rows that apply the moment they change, with no Save button. The sidebar expands only the active section into its sub-pages. A Ctrl+K command menu reaches every page and action, entered from one Search row at the top of the sidebar. A first-launch Setup of three steps sets a direction, training days and the microphone, and a one-sentence page hint under each title explains the page until dismissed. Every surface now follows this system; no pre-redesign component remains.",
     "keyCharacteristics": [
       "Two-layer shell: Mica-tinted nav layer, one raised content pane with a concentric 10px top-left corner.",
+      "A sidebar of sections and sub-pages; only the active section is open.",
+      "Wide windows (2xl, 1536px) get columns, not wider margins.",
       "Neutrals are greys tinted a few points toward the accent hue; one accent for primary action, selection and \"in range\".",
       "Geist for all UI text; Geist Mono with tabular figures only for measurements (Hz, times, counts, indices).",
       "Alpha hairlines divide content; rows and sections, not cards.",
@@ -709,7 +765,7 @@
       {
         "name": "The Sentence Case Rule",
         "section": "typography",
-        "body": "Headings, labels and buttons are sentence case at normal tracking. There are no uppercase tracked labels and no small text sitting above a heading."
+        "body": "Headings, labels and buttons are sentence case at normal tracking. There are no uppercase tracked labels and no small text sitting above a heading. A step count (\"Step 2 of 3\") lives in the footer beside the step's actions, never above the heading."
       },
       {
         "name": "The Float-Only Shadow Rule",
@@ -759,7 +815,7 @@
       {
         "name": "The Direction-Neutral Template Rule",
         "section": "components",
-        "body": "A template never assumes a voice direction's pitch range. The user's own range comes first; templates point to it."
+        "body": "A template never sets or assumes a voice direction's pitch range. The user's own range comes first; templates point to it. Only Setup's direction choice proposes a starting range, shown in Hz and editable later."
       }
     ],
     "dos": [
@@ -790,7 +846,12 @@
       "Do give every control smaller than 32px invisible hit slop (4px buttons and swatches, 6px text buttons, 8px switches).",
       "Do let a held drag follow the pointer exactly; animate only the neighbours (200ms ease-in-out).",
       "Do give every drag handle a keyboard alternative (Arrow Up and Down).",
-      "Do write templates that send the user to set their own target range first."
+      "Do write templates that send the user to set their own target range first.",
+      "Do split wide pages into columns from 2xl (1536px), up to 2200px, rather than widening margins or stretching one column.",
+      "Do expand only the active sidebar section, and keep one shared indicator for every item and sub-item.",
+      "Do explain a page with one dismissible page hint under its title, never a banner or a tour overlay.",
+      "Do put a step count in the footer beside the step's actions.",
+      "Do centre the full-window session screens (mic check, summary, not saved) with auto margins."
     ],
     "donts": [
       "Don't use cards as structure: no grids of bordered or shadowed boxes holding page content.",
@@ -798,7 +859,7 @@
       "Don't use large radii; nothing above 12px.",
       "Don't reach for a general icon library (no Lucide everywhere); use the custom 16px 1.5-stroke set, and only where text cannot do the job.",
       "Don't add decorative pills or badges.",
-      "Don't add eyebrow or kicker labels: no small or uppercase tracked text above a heading.",
+      "Don't add eyebrow or kicker labels: no small or uppercase tracked text above a heading, and no step count there either.",
       "Don't bounce or overshoot everyday UI; the confirm pulse is the one exception.",
       "Don't put shadows on anything resting in the page flow.",
       "Don't use the accent decoratively inside focus mode; every accent there is a primary action, a selection, progress or \"in range\".",

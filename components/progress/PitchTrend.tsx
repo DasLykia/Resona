@@ -14,7 +14,7 @@ export interface TrendPoint {
 }
 
 const PAD_L = 72;
-const PITCH_H = 190, RANGE_H = 44, STRAIN_H = 18, GAP = 14;
+const RANGE_H = 44, STRAIN_H = 18, GAP = 14;
 
 const EASE_OUT = [0.23, 1, 0.32, 1] as const;
 const fmtDate = (t: number) => new Date(t).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
@@ -44,6 +44,8 @@ export const PitchTrend: React.FC<{ points: TrendPoint[]; range: PitchRange; onS
   const rangeEnds = trendEnds(withPitch.map(p => p.inRangePct));
 
   const plotW = Math.max(40, width - PAD_L - 8);
+  // Taller on big screens so the chart keeps a readable aspect instead of a thin strip
+  const PITCH_H = Math.round(Math.min(420, Math.max(190, width * 0.2)));
   const n = points.length;
   const step = plotW / n;
   const cx = (i: number) => PAD_L + step * (i + 0.5);

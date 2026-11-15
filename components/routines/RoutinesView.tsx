@@ -1,5 +1,4 @@
 import React, { useRef, useState } from 'react';
-import { motion } from 'motion/react';
 import type { Routine } from '../../types';
 import { ROUTINE_TEMPLATES } from '../../constants';
 import { copyRoutine, routineLength } from '../../services/routines';
@@ -8,75 +7,91 @@ import { Popover } from '../Popover';
 import { RoutineEditor } from './RoutineEditor';
 
 const newId = () => crypto.randomUUID();
-const EASE_IN_OUT = [0.65, 0, 0.35, 1] as const;
+const fmt = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+const OPEN_WEIGHT = 120; // open-ended blocks drawn as 2 min, same as the session progress hairline
 
-interface RoutinesViewProps {
+interface RoutinePageProps {
+  routine: Routine;
   routines: Routine[];
   activeId: string;
   onChange: (routines: Routine[]) => void;
   onSetActive: (id: string) => void;
+  onSelect: (id: string) => void;
+  onStart: (id: string) => void;
 }
 
-// Saved routines on the left, the selected one's editor on the right
-export const RoutinesView: React.FC<RoutinesViewProps> = ({ routines, activeId, onChange, onSetActive }) => {
-  const [selectedId, setSelectedId] = useState(activeId);
-  const selected = routines.find(r => r.id === selectedId) ?? routines[0];
-
-  const add = (r: Routine) => { onChange([...routines, r]); setSelectedId(r.id); };
+// One routine: its editor, and on wide windows a side column showing how a session will run
+export const RoutinePage: React.FC<RoutinePageProps> = ({ routine, routines, activeId, onChange, onSetActive, onSelect, onStart }) => {
   const replace = (r: Routine) => onChange(routines.map(x => (x.id === r.id ? r : x)));
-  const remove = (id: string) => {
-    const rest = routines.filter(r => r.id !== id);
+  const remove = () => {
+    const rest = routines.filter(r => r.id !== routine.id);
     onChange(rest);
-    if (id === activeId) onSetActive(rest[0].id);
-    setSelectedId(rest[0].id);
+    if (routine.id === activeId) onSetActive(rest[0].id);
+    onSelect(rest[0].id);
   };
+  const duplicate = () => {
+    const c = copyRoutine(routine, `${routine.name} copy`, newId);
+    onChange([...routines, c]);
+    onSelect(c.id);
+  };
+  const weights = routine.blocks.map(b => b.duration || OPEN_WEIGHT);
+  const total = routine.blocks.reduce((a, b) => a + b.duration, 0);
 
   return (
-    <div className="grid grid-cols-[10.5rem_1fr] xl:grid-cols-[13rem_1fr] gap-6 xl:gap-10 items-start">
-      <div>
-        <ul aria-label="Routines">
-          {routines.map(r => {
-            const on = r.id === selected.id;
-            return (
-              <li key={r.id}>
-                <button onClick={() => setSelectedId(r.id)} aria-current={on ? 'true' : undefined}
-                  className={`relative w-full text-left pl-3 pr-2 py-2 rounded-lg transition-colors duration-150 ${on ? 'bg-text/[0.06]' : 'hover:bg-text/[0.04]'}`}>
-                  {on && <motion.span layoutId="routine-indicator" className="absolute left-0 top-1/2 -mt-2 h-4 w-[3px] rounded-full bg-primary"
-                    transition={{ duration: 0.22, ease: EASE_IN_OUT }} />}
-                  <span className={`block text-[13.5px] truncate ${on ? 'text-text font-medium' : 'text-text'}`}>{r.name || 'Untitled routine'}</span>
-                  <span className="block text-[12px] text-text-muted">
-                    {routineLength(r)}{r.id === activeId && <span className="text-primary"> · on Today</span>}
-                  </span>
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-        <NewRoutineMenu onCreate={add} />
-      </div>
-
+    <div className="grid grid-cols-1 2xl:grid-cols-[minmax(0,1fr)_22rem] gap-x-16 gap-y-10 items-start">
       <RoutineEditor
-        key={selected.id}
-        routine={selected}
-        isActive={selected.id === activeId}
+        key={routine.id}
+        routine={routine}
+        isActive={routine.id === activeId}
         canDelete={routines.length > 1}
         onChange={replace}
-        onUseOnToday={() => onSetActive(selected.id)}
-        onDuplicate={() => add(copyRoutine(selected, `${selected.name} copy`, newId))}
-        onDelete={() => remove(selected.id)}
+        onUseOnToday={() => onSetActive(routine.id)}
+        onDuplicate={duplicate}
+        onDelete={remove}
       />
+
+      <aside className="hidden 2xl:block sticky top-0">
+        <h2 className="text-[15px] font-semibold">How it runs</h2>
+        <p className="mt-1 text-[13px] text-text-muted">{routineLength(routine)}, one exercise after another.</p>
+        {routine.blocks.length > 0 ? (
+          <>
+            <div className="mt-4 flex gap-[3px]" aria-hidden="true">
+              {routine.blocks.map((b, i) => (
+                <div key={b.id} className={`h-[6px] rounded-full ${b.duration ? 'bg-primary/60' : 'bg-text/20'}`} style={{ flexGrow: weights[i], flexBasis: 0 }} />
+              ))}
+            </div>
+            <ol className="mt-4">
+              {routine.blocks.map((b, i) => (
+                <li key={b.id} className="flex items-baseline gap-3 py-1.5 text-[13px]">
+                  <span className="font-mono tabular-nums text-[12px] text-text-muted w-4 text-right">{i + 1}</span>
+                  <span className="flex-1 truncate">{b.title}</span>
+                  <span className="font-mono tabular-nums text-[12.5px] text-text-muted">{b.duration ? fmt(b.duration) : 'open'}</span>
+                  <span className="w-10 text-right font-mono tabular-nums text-[12px] text-text-muted">{b.duration && total ? `${Math.round((b.duration / total) * 100)}%` : ''}</span>
+                </li>
+              ))}
+            </ol>
+            <Button size="lg" className="mt-6 w-full" onClick={() => onStart(routine.id)}>Start this routine</Button>
+          </>
+        ) : (
+          <p className="mt-4 text-[13px] text-text-muted">Add exercises to see the session take shape.</p>
+        )}
+      </aside>
     </div>
   );
 };
 
-const NewRoutineMenu: React.FC<{ onCreate: (r: Routine) => void }> = ({ onCreate }) => {
+// Sidebar item under Routines that opens the template choice
+export const NewRoutineMenu: React.FC<{ onCreate: (r: Routine) => void }> = ({ onCreate }) => {
   const trigger = useRef<HTMLButtonElement>(null);
   const [open, setOpen] = useState(false);
   const pick = (r: Routine) => { onCreate(r); setOpen(false); };
   const item = 'w-full text-left px-3 py-2 rounded-lg hover:bg-text/[0.06] transition-colors';
   return (
     <>
-      <Button ref={trigger} variant="ghost" size="sm" className="mt-2" onClick={() => setOpen(o => !o)} aria-expanded={open}>New routine</Button>
+      <button ref={trigger} onClick={() => setOpen(o => !o)} aria-expanded={open}
+        className="relative w-full h-8 pl-7 pr-3 flex items-center text-left text-[13px] rounded-lg text-text-muted hover:text-text hover:bg-text/[0.045] transition-[background-color,color,transform] duration-150 active:scale-[0.97]">
+        New routine
+      </button>
       <Popover open={open} onClose={() => setOpen(false)} anchor={trigger} align="start" label="New routine">
         <div className="w-72 -m-2">
           <button className={item} onClick={() => pick({ id: newId(), name: 'New routine', blocks: [] })}>

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { Button } from './Button';
 import { IconPause, IconPlay } from './icons';
@@ -22,12 +22,17 @@ export const fmtClock = (s: number) => `${Math.floor(s / 60)}:${String(Math.floo
 
 // WebM from MediaRecorder reports Infinity as its duration in Chromium, so the session length stands in
 export const RecordingPlayer: React.FC<{ blob: Blob; fallbackLength: number; label?: string; onTime?: (s: number) => void }> = ({ blob, fallbackLength, label = 'Recording', onTime }) => {
-  const url = useMemo(() => URL.createObjectURL(blob), [blob]);
+  // Created in the effect (not useMemo): a cleanup that revokes the URL must also be able to recreate it
+  const [url, setUrl] = useState<string | undefined>(undefined);
+  useEffect(() => {
+    const u = URL.createObjectURL(blob);
+    setUrl(u);
+    return () => URL.revokeObjectURL(u);
+  }, [blob]);
   const audio = useRef<HTMLAudioElement>(null);
   const [playing, setPlaying] = useState(false);
   const [t, setT] = useState(0);
   const [len, setLen] = useState(fallbackLength);
-  useEffect(() => () => URL.revokeObjectURL(url), [url]);
 
   const toggle = () => { const a = audio.current!; if (a.paused) a.play().catch(() => setPlaying(false)); else a.pause(); };
 

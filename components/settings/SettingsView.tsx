@@ -13,12 +13,15 @@ const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const FULL_DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 const DAY_INDEX = [1, 2, 3, 4, 5, 6, 0]; // Monday first; stored as JS getDay() (0 = Sunday)
 
-const Group: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
+// Each settings page shows one group; the page title names it, so only extra groups (Reset) get a heading
+const Group: React.FC<{ title?: string; show: boolean; children: React.ReactNode }> = ({ title, show, children }) => show ? (
   <section className="mt-10 first:mt-0">
-    <h2 className="text-[15px] font-semibold mb-2">{title}</h2>
+    {title && <h2 className="text-[15px] font-semibold mb-2">{title}</h2>}
     <div className="border-t border-border">{children}</div>
   </section>
-);
+) : null;
+
+export type SettingsPageId = 'appearance' | 'training' | 'microphone' | 'data' | 'updates';
 
 // One setting: what it is on the left, its control on the right
 const Row: React.FC<{ label: string; hint?: React.ReactNode; children: React.ReactNode; htmlFor?: string }> = ({ label, hint, children, htmlFor }) => (
@@ -45,21 +48,20 @@ interface SettingsViewProps {
   appVersion: string;
   onReset: () => void;
   onInstallUpdate: (u: UpdateInfo) => void;
+  page: SettingsPageId;
+  onShowHintsAgain: () => void;
 }
 
-export const SettingsView: React.FC<SettingsViewProps> = ({ settings, update, stats, appVersion, onReset, onInstallUpdate }) => {
+export const SettingsView: React.FC<SettingsViewProps> = ({ settings, update, stats, appVersion, onReset, onInstallUpdate, page, onShowHintsAgain }) => {
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
   useEffect(() => { AudioService.getDevices().then(setDevices).catch(() => setDevices([])); }, []);
 
   const unlockedAll = settings.disableLeveling;
   const canUse = (t: ColorTheme) => unlockedAll || stats.level >= THEMES[t].unlockLevel;
-  const toggleDay = (d: number) => update({
-    trainingDays: settings.trainingDays.includes(d) ? settings.trainingDays.filter(x => x !== d) : [...settings.trainingDays, d].sort(),
-  });
 
   return (
     <div>
-      <Group title="Appearance">
+      <Group show={page === 'appearance'}>
         <Row label="Color mode" hint="System follows your Windows light or dark setting.">
           <Segmented label="Color mode" value={settings.theme} onChange={theme => update({ theme })}
             options={[{ value: 'system', label: 'System' }, { value: 'light', label: 'Light' }, { value: 'dark', label: 'Dark' }]} />
@@ -93,22 +95,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ settings, update, st
             ))}
           </Row>
         )}
+        <Row label="Page hints" hint="The one-line explanations shown the first time you open each page.">
+          <Button variant="secondary" size="sm" onClick={onShowHintsAgain}>Show them again</Button>
+        </Row>
       </Group>
 
-      <Group title="Training">
+      <Group show={page === 'training'}>
         <Row label="Training days" hint="Days you don’t train on, and rest days, never break your streak. With no days picked, every day counts.">
-          <div role="group" aria-label="Training days" className="flex gap-1">
-            {DAYS.map((d, i) => {
-              const on = settings.trainingDays.includes(DAY_INDEX[i]);
-              return (
-                <button key={d} aria-pressed={on} aria-label={FULL_DAYS[i]} onClick={() => toggleDay(DAY_INDEX[i])}
-                  className={`w-9 h-8 rounded-lg text-[12.5px] transition-[background-color,color,transform] duration-150 active:scale-[0.97]
-                    ${on ? 'bg-primary text-on-primary' : 'bg-text/[0.05] text-text-muted hover:text-text hover:bg-text/[0.09]'}`}>
-                  {d.slice(0, 2)}
-                </button>
-              );
-            })}
-          </div>
+          <TrainingDaysPicker days={settings.trainingDays} onChange={trainingDays => update({ trainingDays })} />
         </Row>
         <Row label="Beep between exercises" htmlFor="beep" hint="Plays when a timed exercise ends.">
           <Slider id="beep" value={settings.beepVolume} min={0} max={1} step={0.1} onChange={v => update({ beepVolume: v })}
@@ -119,7 +113,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ settings, update, st
         </Row>
       </Group>
 
-      <Group title="Microphone">
+      <Group show={page === 'microphone'}>
         <Row label="Input device" htmlFor="mic">
           <select id="mic" value={settings.inputDeviceId} onChange={e => update({ inputDeviceId: e.target.value })}
             className="h-8 w-64 rounded-lg border border-border-strong bg-surface px-2.5 text-[13px] outline-none focus:border-primary transition-colors">
@@ -137,7 +131,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ settings, update, st
         </Row>
       </Group>
 
-      <Group title="Progress and data">
+      <Group show={page === 'data'}>
         <Row label="Unlock all rewards" hint="All accent colors right away, but you stop earning XP and levels while this is on.">
           <LevelingSwitch settings={settings} stats={stats} update={update} />
         </Row>
@@ -149,14 +143,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ settings, update, st
         </Row>
       </Group>
 
-      <Group title="Updates">
+      <Group show={page === 'updates'}>
         <Row label="Check for updates when Resona starts">
           <Switch label="Check for updates when Resona starts" checked={settings.checkUpdatesOnStartup} onChange={v => update({ checkUpdatesOnStartup: v })} />
         </Row>
         <UpdateRow appVersion={appVersion} onInstall={onInstallUpdate} />
       </Group>
 
-      <Group title="Reset">
+      <Group title="Reset" show={page === 'data'}>
         <Row label="Delete all data" hint="Removes every session, recording, goal and setting from this computer.">
           <ConfirmButton variant="danger" confirmLabel="Delete everything"
             message="Delete all sessions, recordings, goals and settings? Resona restarts empty. This can’t be undone."
@@ -226,3 +220,20 @@ const UpdateRow: React.FC<{ appVersion: string; onInstall: (u: UpdateInfo) => vo
     </Row>
   );
 };
+
+// Monday-first day toggles; also used by first-launch setup
+export const TrainingDaysPicker: React.FC<{ days: number[]; onChange: (days: number[]) => void }> = ({ days, onChange }) => (
+  <div role="group" aria-label="Training days" className="flex gap-1">
+    {DAYS.map((d, i) => {
+      const on = days.includes(DAY_INDEX[i]);
+      return (
+        <button key={d} aria-pressed={on} aria-label={FULL_DAYS[i]}
+          onClick={() => onChange(on ? days.filter(x => x !== DAY_INDEX[i]) : [...days, DAY_INDEX[i]].sort())}
+          className={`relative w-9 h-8 rounded-lg text-[12.5px] transition-[background-color,color,transform] duration-150 active:scale-[0.97] before:absolute before:-inset-0.5 before:content-['']
+            ${on ? 'bg-primary text-on-primary' : 'bg-text/[0.05] text-text-muted hover:text-text hover:bg-text/[0.09]'}`}>
+          {d.slice(0, 2)}
+        </button>
+      );
+    })}
+  </div>
+);

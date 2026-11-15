@@ -7,7 +7,8 @@ import { ConfirmButton } from '../ConfirmButton';
 import { IconGrip } from '../icons';
 
 const fmt = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
-const input = 'w-full bg-transparent outline-none rounded-md px-2 -mx-2 py-1 transition-colors hover:bg-text/[0.04] focus:bg-surface focus:ring-1 focus:ring-border-strong';
+// No width here: each field sets its own (a shared w-full would override the duration's w-16)
+const input = 'bg-transparent outline-none rounded-md px-2 -mx-2 py-1 transition-colors hover:bg-text/[0.04] focus:bg-surface focus:ring-1 focus:ring-border-strong';
 
 interface RoutineEditorProps {
   routine: Routine;
@@ -42,15 +43,9 @@ export const RoutineEditor: React.FC<RoutineEditorProps> = ({ routine, isActive,
   return (
     <div>
       <div className="flex flex-col xl:flex-row xl:items-start justify-between gap-x-6 gap-y-2 pb-4 border-b border-border-strong">
+        {/* The routine's name is the page title (editable there) */}
         <div className="min-w-0 flex-1">
-          <input
-            value={routine.name}
-            onChange={e => onChange({ ...routine, name: e.target.value })}
-            onBlur={e => { if (!e.target.value.trim()) onChange({ ...routine, name: 'Untitled routine' }); }}
-            aria-label="Routine name"
-            className={`${input} text-[17px] font-semibold tracking-[-0.01em]`}
-          />
-          <div className="mt-1 text-[13px] text-text-muted">
+          <div className="text-[13px] text-text-muted xl:pt-1.5">
             <span className="font-mono tabular-nums">{routine.blocks.length}</span> {routine.blocks.length === 1 ? 'exercise' : 'exercises'} ·{' '}
             <span className="font-mono tabular-nums">{fmt(total)}</span>{openCount > 0 && <> plus <span className="font-mono tabular-nums">{openCount}</span> open-ended</>}
           </div>
@@ -141,7 +136,7 @@ const BlockRow: React.FC<{ block: ExerciseBlock; index: number; onChange: (p: Pa
         </div>
         <textarea value={block.description} onChange={e => onChange({ description: e.target.value })}
           placeholder="What to do and what to pay attention to" rows={2} aria-label={`Instructions for ${block.title}`}
-          className={`${input} mt-1 resize-none [field-sizing:content] min-h-[2.5rem] text-[13.5px] leading-relaxed text-text-muted focus:text-text placeholder:text-text-muted/80`} />
+          className={`${input} w-full mt-1 resize-none [field-sizing:content] min-h-[2.5rem] text-[13.5px] leading-relaxed text-text-muted focus:text-text placeholder:text-text-muted/80`} />
         <div className="mt-1 flex items-center gap-4">
           <button onClick={() => setShowPhrases(s => !s)} aria-expanded={showPhrases} className="relative before:absolute before:-inset-1.5 before:content-[''] text-[12.5px] text-text-muted hover:text-text transition-colors">
             {showPhrases ? 'Hide phrases' : phrases ? `Phrases (${phrases})` : 'Add phrases to read'}
@@ -159,3 +154,14 @@ const BlockRow: React.FC<{ block: ExerciseBlock; index: number; onChange: (p: Pa
     </Reorder.Item>
   );
 };
+
+// The routine name as the page title, renamed in place; an empty name falls back on blur
+export const RoutineNameTitle: React.FC<{ routine: Routine; onRename: (name: string) => void }> = ({ routine, onRename }) => (
+  <input
+    value={routine.name}
+    onChange={e => onRename(e.target.value)}
+    onBlur={e => { if (!e.target.value.trim()) onRename('Untitled routine'); }}
+    aria-label="Routine name"
+    className={`${input} w-full min-w-0 font-[inherit] text-[length:inherit] tracking-[inherit] leading-[inherit]`}
+  />
+);

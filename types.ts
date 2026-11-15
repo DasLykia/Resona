@@ -91,6 +91,10 @@ export interface AppSettings {
   routines: Routine[];
   activeRoutineId: string;
 
+  // First-launch setup and page hints
+  setupDone?: boolean;
+  dismissedHints?: string[];
+
   // Legacy (≤1.0.5), read once for migration and no longer written by the UI
   planMode?: 'structured' | 'simple';
   currentRoutine?: Routine;

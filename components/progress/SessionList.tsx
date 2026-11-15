@@ -32,6 +32,9 @@ export const SessionList: React.FC<SessionListProps> = ({ sessions, range, title
   const [query, setQuery] = useState('');
   const [flashId, setFlashId] = useState<string | null>(null); // brief tint on the row you jumped to
   const [openId, setOpenId] = useState<string | null>(null);
+  const wide = useWide();
+  // A detail pane is never empty when there's something to show: start on the newest session
+  useEffect(() => { if (wide && !openId && sessions[0]) setOpenId(sessions[0].id); }, [wide, openId, sessions]);
   const [selecting, setSelecting] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [limit, setLimit] = useState(PAGE);
@@ -70,8 +73,12 @@ export const SessionList: React.FC<SessionListProps> = ({ sessions, range, title
     return <p className="text-[13.5px] text-text-muted">Your sessions will be listed here, newest first, each with its recording, pitch and notes.</p>;
   }
 
+  const openSession = wide ? sessions.find(s => s.id === openId) : undefined;
+
   return (
-    <div>
+    // Wide windows: list + detail pane (like Mail). Narrow: the row expands in place.
+    <div className="grid grid-cols-1 2xl:grid-cols-[minmax(0,1fr)_34rem] gap-x-12 items-start">
+    <div className="min-w-0">
       <div className="flex items-center justify-between gap-4 mb-3">
         <input
           type="search" value={query} onChange={e => setQuery(e.target.value)}
@@ -112,13 +119,14 @@ export const SessionList: React.FC<SessionListProps> = ({ sessions, range, title
             <motion.li key={s.id} id={`session-${s.id}`} layout="position"
               variants={{ hidden: { opacity: 0, y: 4 }, shown: { opacity: 1, y: 0, transition: { duration: 0.2, ease: EASE_OUT } } }}
               transition={{ layout: { duration: 0.22, ease: [0.65, 0, 0.35, 1] } }}
-              className={`border-b border-border transition-colors duration-700 ${flashId === s.id ? 'bg-primary/[0.06]' : ''}`}>
+              className={`border-b border-border transition-colors duration-700 ${flashId === s.id ? 'bg-primary/[0.06]' : wide && open ? 'bg-text/[0.05]' : ''}`}>
               <div className="flex items-center">
                 {selecting && (
                   <input type="checkbox" className="ml-1 mr-3 shrink-0" checked={selected.has(s.id)} onChange={() => toggleSel(s.id)}
                     aria-label={`Select session on ${date.toLocaleDateString()}`} />
                 )}
-                <button onClick={() => (selecting ? toggleSel(s.id) : setOpenId(open ? null : s.id))} aria-expanded={open}
+                <button onClick={() => (selecting ? toggleSel(s.id) : setOpenId(open && !wide ? null : s.id))}
+                  aria-expanded={wide ? undefined : open} aria-current={wide && open ? 'true' : undefined}
                   className={`${COLS} flex-1 py-3 text-left text-[13.5px] hover:bg-text/[0.03] transition-colors rounded-lg`}>
                   <span className="font-mono tabular-nums text-[12.5px] whitespace-nowrap">{date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}<span className="hidden xl:inline text-text-muted"> · {date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}</span></span>
                   <span className="truncate">{title(s)}{s.notes && <span className="text-text-muted"> · {s.notes}</span>}</span>
@@ -126,12 +134,12 @@ export const SessionList: React.FC<SessionListProps> = ({ sessions, range, title
                   <span className="font-mono tabular-nums text-[12.5px] text-right">{stats.median ?? '–'}</span>
                   <span className="font-mono tabular-nums text-[12.5px] text-right">{stats.median === null ? '–' : `${stats.inRangePct}%`}</span>
                   <span className={`text-[13px] ${strain !== null && strain >= 4 ? 'text-danger' : 'text-text-muted'}`}>{strain ? STRAIN_LABELS[strain - 1] : '–'}</span>
-                  <IconChevronRight className={`text-text-muted transition-transform duration-200 ${open ? 'rotate-90' : ''}`} />
+                  <IconChevronRight className={`text-text-muted transition-transform duration-200 ${open && !wide ? 'rotate-90' : ''}`} />
                 </button>
               </div>
 
               <AnimatePresence initial={false}>
-                {open && !selecting && (
+                {open && !selecting && !wide && (
                   <motion.div
                     initial={{ height: 0, opacity: 0 }}
                     animate={{ height: 'auto', opacity: 1, transition: { duration: 0.24, ease: EASE_OUT } }}
@@ -156,7 +164,46 @@ export const SessionList: React.FC<SessionListProps> = ({ sessions, range, title
         </div>
       )}
     </div>
+
+    {wide && (
+      <aside className="sticky top-0 pt-11 min-w-0" aria-label="Session details">
+        <AnimatePresence mode="wait" initial={false}>
+          {openSession ? (
+            <motion.div key={openSession.id}
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0, transition: { duration: 0.2, ease: EASE_OUT } }}
+              exit={{ opacity: 0, transition: { duration: 0.12 } }}>
+              <h2 className="text-[17px] font-semibold tracking-[-0.01em]">{title(openSession)}</h2>
+              <p className="mt-0.5 mb-4 text-[13px] text-text-muted">
+                {new Date(openSession.startTime).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })} at{' '}
+                {new Date(openSession.startTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+              </p>
+              <SessionDetail session={openSession} range={openSession.targetRange ?? range} syncDelete={syncDelete}
+                onUpdateNote={onUpdateNote} onDelete={onDelete} onRemoveRecording={onRemoveRecording} />
+            </motion.div>
+          ) : (
+            <motion.p key="empty" className="text-[13.5px] text-text-muted" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+              Select a session to see its pitch, play its recording and edit its note.
+            </motion.p>
+          )}
+        </AnimatePresence>
+      </aside>
+    )}
+    </div>
   );
+};
+
+// Tailwind's 2xl breakpoint as a live flag, so layout and behaviour switch together
+const useWide = () => {
+  const q = '(min-width: 1536px)';
+  const [wide, setWide] = useState(() => window.matchMedia(q).matches);
+  useEffect(() => {
+    const m = window.matchMedia(q);
+    const on = (e: MediaQueryListEvent) => setWide(e.matches);
+    m.addEventListener('change', on);
+    return () => m.removeEventListener('change', on);
+  }, []);
+  return wide;
 };
 
 const SessionDetail: React.FC<{

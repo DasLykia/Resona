@@ -77,11 +77,13 @@ export const ActivityCalendar: React.FC<ActivityCalendarProps> = ({ minutesByDay
           <motion.div
             key={offset}
             custom={dir}
-            className="grid grid-cols-1 md:grid-cols-2 gap-10"
+            className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-10"
             initial={{ opacity: 0, x: dir * -24 }}
             animate={{ opacity: 1, x: 0, transition: { duration: 0.22, ease: EASE_OUT } }}
             exit={{ opacity: 0, x: dir * 24, transition: { duration: 0.18, ease: EASE_OUT } }}
           >
+            {/* Wide windows show a third, older month */}
+            <div className="hidden 2xl:block">{month(offset + 2)}</div>
             {month(offset + 1)}
             {month(offset)}
           </motion.div>

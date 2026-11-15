@@ -174,11 +174,15 @@ components:
     typography: "{typography.body}"
     rounded: "{rounded.control}"
     padding: "8px 12px"
-  routine-list-item:
-    textColor: "{colors.text-main}"
-    typography: "{typography.body}"
+  nav-sub-item:
+    textColor: "{colors.text-muted}"
     rounded: "{rounded.control}"
-    padding: "8px 8px 8px 12px"
+    padding: "0 12px 0 28px"
+    height: "32px"
+  week-day:
+    textColor: "{colors.text-muted}"
+    rounded: "{rounded.control}"
+    height: "56px"
 ---
 
 # Design System: Resona
@@ -189,18 +193,20 @@ components:
 
 Resona looks like a well-made piece of Windows itself: a Mica nav layer, a 36px custom title bar with native caption buttons, a labeled sidebar like Windows Settings, and one raised content pane that holds the work. Nothing competes for attention. Hierarchy comes from type weight, alpha hairlines and space, never from boxes, glows or badges. The one recurring object is the user's voice range; everything else stays out of its way.
 
-Density is calm and desktop-native: 13 to 14px text, 32px controls, left-anchored content columns that cap at 1000px. Every colour is derived at runtime from two accent source colours (the level-unlocked theme), and OKLCH relative-colour syntax normalises lightness so every theme lands equally calm and legible, in light and dark.
+Density is calm and desktop-native: 13 to 14px text, 32px controls, left-anchored content columns that cap at 1000px; from 1536px wide pages run up to 2200px and split into columns, so a large monitor fills with content rather than margin. Every colour is derived at runtime from two accent source colours (the level-unlocked theme), and OKLCH relative-colour syntax normalises lightness so every theme lands equally calm and legible, in light and dark.
 
 Motion is quick, interruptible and physical without bounce: ease-out for entrances, ease-in-out for moves, exits shorter than entrances, a 0.97 press, and indicators that slide between positions on a shared layout id.
 
 A session is a full-window focus mode. It keeps the same palette, hairlines and radii but adds a display tier read from a step back from the screen, and the accent inside it carries only signal: a primary action, a selection, progress (block progress, the recording scrubber) and "in range".
 
-Progress is a reading page, not a dashboard: ruled sections that each answer one question, charts that all share the range band, sessions in a ruled table that expand in place, and destructive actions that confirm in a popover grown from their own trigger.
+Progress is reading, not a dashboard: five sub-pages that each answer one question, charts that all share the range band, sessions in a ruled table with a detail pane, and destructive actions that confirm in a popover grown from their own trigger.
 
-Routines and Settings are working pages edited in place: routines in a two-column list and editor with ruled, draggable exercise rows; settings as Windows Settings rows that apply the moment they change, with no Save button. A Ctrl+K command menu reaches every page and action, entered from one Search row at the top of the sidebar. Every surface now follows this system; no pre-redesign component remains.
+Routines and Settings are working pages edited in place: each routine is its own page, listed in the sidebar, with its name as the editable page title and ruled, draggable exercise rows; settings are one page per group of Windows Settings rows that apply the moment they change, with no Save button. The sidebar expands only the active section into its sub-pages. A Ctrl+K command menu reaches every page and action, entered from one Search row at the top of the sidebar. A first-launch Setup of three steps sets a direction, training days and the microphone, and a one-sentence page hint under each title explains the page until dismissed. Every surface now follows this system; no pre-redesign component remains.
 
 **Key Characteristics:**
 - Two-layer shell: Mica-tinted nav layer, one raised content pane with a concentric 10px top-left corner.
+- A sidebar of sections and sub-pages; only the active section is open.
+- Wide windows (2xl, 1536px) get columns, not wider margins.
 - Neutrals are greys tinted a few points toward the accent hue; one accent for primary action, selection and "in range".
 - Geist for all UI text; Geist Mono with tabular figures only for measurements (Hz, times, counts, indices).
 - Alpha hairlines divide content; rows and sections, not cards.
@@ -279,19 +285,30 @@ Focus tier, used only inside a session's focus mode:
 
 **The Unbroken Measurement Rule.** A measurement and its unit never split across lines: the number and unit are one no-wrap unit (the `Num` helper: mono number in ink, a space, the unit in Geist).
 
-**The Sentence Case Rule.** Headings, labels and buttons are sentence case at normal tracking. There are no uppercase tracked labels and no small text sitting above a heading.
+**The Sentence Case Rule.** Headings, labels and buttons are sentence case at normal tracking. There are no uppercase tracked labels and no small text sitting above a heading. A step count ("Step 2 of 3") lives in the footer beside the step's actions, never above the heading.
 
 ## Layout
 
 The window is a column: a 36px title bar, then a row of a 216px sidebar and the content pane. The title bar leaves 148px clear on the right for the native caption buttons and is a drag region. The content pane is one raised surface with a hairline on its top and left edges and a 10px top-left corner, the only rounded corner in the shell; it clips its overflow (`overflow: clip`) so page transitions never spill past that corner.
 
-Pages sit left-anchored next to the nav, like Windows Settings, in a PageFrame: 40px side padding, 28px top, 64px bottom, max width 1000px (760px narrow for Settings, 1200px wide for Progress). The page header is 28px above content. Sections stack with 40px gap plus 32px padding above a hairline; the first section has neither. Lists are rows of 10px vertical padding divided by hairlines, laid out as a grid of index, label and right-aligned measurement. The Today page is a single hairline-bounded band (title and summary left, Change and Start right), then "Your voice" (the range band with recent session medians and a one-line muted summary), the routine list and the Focus note.
+Pages sit left-anchored next to the nav, like Windows Settings, in a PageFrame: 40px side padding (56px from 2xl), 28px top, 64px bottom, max width 1000px by default, 760px narrow (Settings) and 2200px wide (Today, Progress, Routines). The title is a node, so a page can make it editable (the routine name). The page header is 28px above content; an optional page hint sits between them. Sections stack with 40px gap plus 32px padding above a hairline; the first section has neither. Lists are rows of 10px vertical padding divided by hairlines, laid out as a grid of index, label and right-aligned measurement. The Today page opens with a hairline-bounded band (the routine picker and its length left, ghost Free session and large Start session right), then the routine list, This week, "Your voice" (the range band with recent session medians and a one-line muted summary) and the Focus note.
 
-The Progress page uses the wide frame and stacks five sections in a fixed order, each heading a plain question or name: "Is your voice changing?" (pitch trend), "Then and now" (compare recordings), "Consistency" (streak sentence and two-month calendar), "Sessions" (the session table, then recordings without a session), "Goals and achievements" (ruled lists). Charts fill the column width; nothing sits in a card.
+**Wide layout.** The 2xl breakpoint (1536px) turns pages into columns, top-aligned, 64px apart unless noted:
+- **Today:** two columns, 1fr and 0.9fr. Start and the routine list on the left; This week, Your voice and Focus on the right.
+- **Then and now:** pickers and playback in a 24rem column, the chart beside them (56px gap); the chart is `clamp(window height − 380px, 320px, 640px)` tall.
+- **Sessions:** the list, then a 34rem sticky detail pane (48px gap). The newest session opens in it by default; below 2xl rows expand inline instead (`useWide` flips layout and behaviour together).
+- **Calendar:** three months instead of two.
+- **Overview:** the pitch trend's median panel is `clamp(width × 0.2, 190px, 420px)` tall.
+- **Goals and achievements:** two columns from lg, capped at 1400px.
+- **Routine:** the editor, then a 22rem sticky "How it runs" aside.
 
-The Routines page is two columns aligned to the top: the routine list (10.5rem wide below the xl breakpoint, 13rem from xl) and the selected routine's editor filling the rest, 24px apart (40px from xl). The editor header puts the name and summary left and its actions right from xl, and stacks them below xl. Settings uses the narrow frame: groups (a 15px heading, then a hairline) 40px apart, each a column of rows.
+Progress is five sub-pages in the sidebar, each with its own wide PageFrame and a title that is a plain question or name: Overview ("Is your voice changing?", the pitch trend), Then and now (compare recordings), Calendar (streak sentence and the activity calendar), Sessions (the session table, then recordings without a session) and Goals and achievements (ruled lists). Charts fill their column; nothing sits in a card.
 
-Focus mode covers the whole window below the title bar, sidebar included, on the app ground with a hairline at its top. Its gutters are 48px. A routine session stacks: the block-progress hairline (16px from the top), a header with the focus title left and the timer right, the prompt row, the live pitch chart filling the remaining height (220px minimum), and a 64px footer above a hairline, laid out as three columns: End session left, transport centred, position and "Next: title" right. The mic check (560px column), summary (760px) and "Session not saved" screens are left-anchored columns inside the same layer.
+Each routine is a page: the sidebar lists the routines under Routines, and the routine's name is the page title. The editor header puts the count and length left and its actions right from xl, and stacks them below xl. Settings is one narrow page per group (Appearance, Training, Microphone, Progress and data, Updates); the page title names the group, so only an extra group on the same page (Reset, under Progress and data) gets its own 15px heading and hairline, 40px below the rows above.
+
+The welcome modal is gone; a first-launch Setup replaces it (see Components).
+
+Focus mode covers the whole window below the title bar, sidebar included, on the app ground with a hairline at its top. Its gutters are 48px. A routine session stacks: the block-progress hairline (16px from the top), a header with the focus title left and the timer right, the prompt row, the live pitch chart filling the remaining height (220px minimum), and a 64px footer above a hairline, laid out as three columns: End session left, transport centred, position and "Next: title" right. The mic check (560px column), summary (760px) and "Session not saved" (560px) screens are columns centred with auto margins inside the same layer, starting 10vh from the top (8vh for the summary).
 
 ## Elevation & Depth
 
@@ -333,8 +350,9 @@ Quiet, compact and tactile.
 - **Focus:** the border turns accent; keyboard focus adds the 2px accent ring.
 
 ### Navigation
-- **Style:** a labeled sidebar (Today, Progress, Routines; Settings pinned at the foot below a hairline). Items are 36px tall, 13.5px text, 6px radius; inactive muted with a 4.5% hover wash, active ink at 500 on a 7% wash.
-- **Indicator:** a 3px by 16px accent bar on the left edge, one element shared by layout id, slides between items over 250ms ease-in-out and stretches 12% vertically while it moves. It does not animate on first paint. Press scales to 0.97.
+- **Style:** a labeled sidebar (Today, Progress, Routines; Settings pinned at the foot below a hairline). Items are 36px tall, 13.5px text, 6px radius; inactive muted with a 4.5% hover wash, active ink at 500 on a 7% wash. A section whose sub-pages are open is ink at 500 without the wash.
+- **Sections and sub-pages:** a route is a section and a sub-page. Only the active section expands; its sub-items (32px tall, 28px left padding, 13px text) open with a height animation, 220ms ease-in-out in and 180ms out, so the items below move rather than jump. Progress lists its five pages, Settings its five groups, and Routines every routine, the one used on Today marked by a 6px accent dot after its name, then a "New routine" item that opens the template Popover (Blank routine and each template, with a 12.5px muted summary).
+- **Indicator:** a 3px by 16px accent bar on the left edge, one element shared by a single layout id across every item and sub-item, slides between them over 250ms ease-in-out and stretches 12% vertically while it moves. It does not animate on first paint. Press scales to 0.97.
 - **Foot:** streak as a mono number plus "day streak", level as "Level N" with a 3px hairline meter filling in accent over 500ms. Small and plain, a button that opens level details.
 - **Title bar:** the waveform mark in accent at 15px, "Resona" at 12px 500, and a muted status that crossfades with a 3px blur.
 
@@ -401,10 +419,11 @@ A per-session column chart, one column per session, oldest left. Three stacked r
 
 ### Pitch trace and Then and now
 - **Pitch trace:** the static pitch-over-time trace of one session, medians from `bucketPitch` at about one point per 2px, over the band with grid lines; 2px round accent trace (1.75px ink 45% for a second trace) and a 1px ink 60% playhead tied to the recording.
-- **Then and now:** two native select pickers labelled "Then" (muted) and "Now" (accent), each with a muted stat line. Both traces share one chart: Then in ink at 45%, Now in accent. Playback switches A/B through a Segmented control and keeps its position, so the same moment plays in both.
+- **Then and now:** two ruled rows labelled "Then" (muted) and "Now" (accent), each with a recording picker and a muted stat line. Both traces share one chart: Then in ink at 45%, Now in accent. Playback switches A/B through a Segmented control and keeps its position, so the same moment plays in both.
+- **Recording picker:** a text trigger (13.5px date, muted "· routine", 10px chevron) that opens a 320px Popover built for hundreds of recordings: a row of quick picks in 12.5px muted (First, 3 months ago, 1 month ago, Last week, Latest; each takes the nearest session), a 32px search field ("Search by date or routine"), then sessions newest first, grouped under 12px muted month names, each a row of mono date, routine and mono median Hz; the chosen one in accent.
 
 ### Activity calendar
-Two months side by side, weeks starting Monday. Day cells are 36px, 6px radius, mono 12.5px numbers.
+Two months side by side (three from 2xl, the extra one older), weeks starting Monday. Day cells are 36px, 6px radius, mono 12.5px numbers.
 - **Tint:** trained days fill in three steps by minutes: accent at 25% (under 10 min), 60% (10 to 20 min), full accent with on-accent text (20 min or more).
 - **Rest days:** a 1px dashed ink outline inset 4px; clicking an empty past day toggles it. Clicking a trained day opens its session.
 - **Today:** semibold with a 2px accent underline at 4px offset.
@@ -413,7 +432,7 @@ Two months side by side, weeks starting Monday. Day cells are 36px, 6px radius, 
 ### Session table
 A ruled table, not cards: rows divided by hairlines, mono date and duration, a chevron that rotates 90° over 200ms when the row is open.
 - **Search** filters rows; **select mode** adds checkboxes and a bulk delete through the Confirm button.
-- **Detail:** a row expands in place (height and opacity, 240ms in, 190ms out) into the pitch trace, the recording, the note and a delete Confirm button. Rows reflow with a 220ms ease-in-out layout tween.
+- **Detail:** below 2xl a row expands in place (height and opacity, 240ms in, 190ms out) into the pitch trace, the recording, the note and a delete Confirm button; rows reflow with a 220ms ease-in-out layout tween. From 2xl the same detail shows in the sticky side pane under a 17px title and a muted date line, crossfading between sessions (200ms in from 6px below, 120ms out); the pane is never empty while sessions exist.
 - **Jump highlight:** a row reached from the trend or calendar scrolls to centre and carries a 6% accent wash that fades out after 1.6s.
 - **Other recordings:** only recordings whose session no longer exists get their own ruled list beneath, with mono minutes and MB and an inline player.
 
@@ -459,11 +478,9 @@ A Ctrl+K dialog that reaches every page and action: go to a page, start a routin
 
 **The One Shortcut Rule.** "Search · Ctrl K" is the only keyboard shortcut shown anywhere in the app. Other shortcuts may exist, but no other hint, badge or key cap is drawn.
 
-### Routines list
-The saved routines as a column of 13.5px names with a 12px muted length beneath ("12 min", "open-ended" or "empty"); the routine used on Today adds " · on Today" in accent. The selected routine sits on a 6% ink wash and carries the 3px by 16px accent bar on its left edge, one element shared by layout id that slides between items over 220ms ease-in-out, like the nav indicator. A ghost sm "New routine" beneath opens a Popover menu: Blank routine, Feminization basics and Masculinization basics, each with a 12.5px muted one-line summary.
-
 ### Routine editor
-- **Header:** the routine name as an inline 17px 600 input (the page-tier title), the count and total in the Mono Numbers, Sans Units form beneath, and actions: a sm secondary "Use on Today" (or accent "Used on Today" text when it already is), ghost Duplicate and a Delete Confirm button. A strong hairline closes the header.
+- **Title:** the routine name is the page H1 itself, an inline input that inherits the 26px page-title type (`RoutineNameTitle`); an emptied name falls back to "Untitled routine" on blur. The editor has no name field of its own.
+- **Header:** the count and total in the Mono Numbers, Sans Units form, and actions: a sm secondary "Use on Today" (or accent "Used on Today" text when it already is), ghost Duplicate and a Delete Confirm button. A strong hairline closes the header.
 - **Inline fields:** every field is a borderless input that shows a 4% ink wash on hover and a raised surface with a 1px strong-hairline ring on focus.
 - **Exercise rows:** ruled rows (hairline beneath, 12px vertical padding) as a grid of drag handle, mono index and content: the inline 14px 500 title, a right-aligned mono m:ss duration (or "Open-ended"), an "Add timer" / "Remove timer" text button, an instructions textarea that grows with its content (`field-sizing: content`), an optional phrases textarea (one phrase per line), and a Remove Confirm button.
 - **Duration:** typed as m:ss and read on blur or Enter; an unreadable value reverts to the previous one rather than showing an error.
@@ -472,13 +489,32 @@ The saved routines as a column of 13.5px names with a 12px muted length beneath 
 
 **The Held Drag Rule.** While held, a dragged element tracks the pointer 1:1 with no easing or lag; only the elements making room for it animate.
 
+### How it runs
+The routine page's 22rem sticky aside from 2xl: a 15px "How it runs" heading and a muted length line, a proportional block bar (one 6px fully rounded segment per block with 3px gaps, widths weighted by duration with open blocks as 2 minutes, the same weighting as the session's block progress; timed blocks accent at 60%, open blocks ink at 20%), the block list as 13px rows of mono index, title, mono m:ss (or "open") and mono share of time, then a full-width large "Start this routine".
+
+### This week
+Today's week, Monday to Sunday, as one ruled row: a hairline above and below and hairlines between seven cells, no boxes. The heading's right side reads "**N** of **M** planned days · **S** day streak" in 13px muted with mono numbers.
+- **Cell:** a 56px button with 6px radius inset 4px, the 12px muted day name above a 12.5px state. Today's name is ink at 600 with the 2px accent underline, as on the calendar.
+- **States:** a trained day shows mono minutes in accent at 500 on a 16% accent tint, the only tinted cell; a rest day carries the 1px dashed ink 40% outline; otherwise Today, Planned, Off or Missed in muted text, and only Missed is ink. Today is never Missed.
+- **Rest:** an empty past or present day toggles rest on click (5% ink hover wash, 0.97 press); a muted line beneath explains that rest never breaks the streak.
+
+### Page hint
+One muted sentence (13.5px, relaxed, 72ch) between the page title and the content, explaining what the page is for, followed by a "Got it" text button in ink with a strong-hairline underline at 3px offset (6px hit slop). Got it folds the hint away (height and opacity, 220ms in, 180ms out, ease-out) and stores the page key in `settings.dismissedHints`; Settings › Appearance has a "Page hints" row with a sm secondary "Show them again". A hint is never a banner, a box or a tooltip.
+
+### Setup
+The first-launch tutorial (shown once to updaters too), replacing the welcome modal: three steps that each set something real. It runs in a centred 600px column with 48px side padding, starting 10vh from the top.
+- **Steps:** "What are you training toward?" (direction), "Which days do you want to train?" (the Settings training-days toggles), then the microphone, which reuses MicCheck with `requireMic={false}` and "Finish setup", so a missing mic never blocks finishing. Each step has a 26px page-tier title and a 14px muted lead at 56ch.
+- **Direction list:** a ruled radio list (hairline above and between, 14px rows): 14px label, 13px muted detail and the mono range ("165–255 Hz") at the right. The selected row gets a 6% accent wash and a 3px by 24px accent bar on the left edge that slides between rows on a shared layout id (220ms ease-in-out). "My own range" expands two mono Hz fields (height 220ms in, 180ms out) with a 12.5px helper that turns danger on invalid input. Choices come from `VOICE_DIRECTIONS` in `constants.ts`; a direction sets the starting range and adds the matching template.
+- **Footer:** ghost "Skip setup" with the muted "Step n of 3" beside it on the left, ghost Back and a large Continue on the right. The step count is never above the heading.
+- **Transition:** steps slide horizontally with popLayout, entering 24px from the direction of travel over 220ms and leaving 16px the other way over 180ms, ease-out.
+
 ### Routine picker
 On Today the routine name (17px 600) is a button with a 10px chevron that opens a Popover of routines: each a row with the name and its muted length, the active one in accent at 500 and marked `aria-pressed`, then "Edit routines" beneath a hairline.
 
 ### Routine templates
-New routines can start from a template (`ROUTINE_TEMPLATES`). Template copy names no pitch as the user's target: a template that depends on range tells the user to set their own target range first (Masculinization basics: "Set a lower target range on Today first").
+New routines can start from a template (`ROUTINE_TEMPLATES`): Feminization basics, Masculinization basics and Androgynous basics. Template copy names no pitch as the user's target: a template that depends on range first sends the user to check their own target range on Today, and may mention a typical range only as a reference after that ("masculinizing voices often aim around 85–155 Hz").
 
-**The Direction-Neutral Template Rule.** A template never assumes a voice direction's pitch range. The user's own range comes first; templates point to it.
+**The Direction-Neutral Template Rule.** A template never sets or assumes a voice direction's pitch range. The user's own range comes first; templates point to it. Only Setup's direction choice proposes a starting range, shown in Hz and editable later.
 
 ### Level details
 A Modal titled "Level N": a 3px fully rounded hairline meter filling in accent over 250ms ease-out, the mono XP to the next level, one muted sentence of how XP is earned in the Mono Numbers, Sans Units form, then "Rewards" as a ruled list: mono "Level n", a 12px colour dot (filled when earned, an empty ring when locked), the reward name, and "Unlocked" in accent or "Locked" in muted. No confetti, no badges.
@@ -514,6 +550,11 @@ A Modal titled "Level N": a 3px fully rounded hairline meter filling in accent o
 - **Do** let a held drag follow the pointer exactly; animate only the neighbours (200ms ease-in-out).
 - **Do** give every drag handle a keyboard alternative (Arrow Up and Down).
 - **Do** write templates that send the user to set their own target range first.
+- **Do** split wide pages into columns from 2xl (1536px), up to 2200px, rather than widening margins or stretching one column.
+- **Do** expand only the active sidebar section, and keep one shared indicator for every item and sub-item.
+- **Do** explain a page with one dismissible page hint under its title, never a banner or a tour overlay.
+- **Do** put a step count in the footer beside the step's actions.
+- **Do** centre the full-window session screens (mic check, summary, not saved) with auto margins.
 
 ### Don't:
 - **Don't** use cards as structure: no grids of bordered or shadowed boxes holding page content.
@@ -521,7 +562,7 @@ A Modal titled "Level N": a 3px fully rounded hairline meter filling in accent o
 - **Don't** use large radii; nothing above 12px.
 - **Don't** reach for a general icon library (no Lucide everywhere); use the custom 16px 1.5-stroke set, and only where text cannot do the job.
 - **Don't** add decorative pills or badges.
-- **Don't** add eyebrow or kicker labels: no small or uppercase tracked text above a heading.
+- **Don't** add eyebrow or kicker labels: no small or uppercase tracked text above a heading, and no step count there either.
 - **Don't** bounce or overshoot everyday UI; the confirm pulse is the one exception.
 - **Don't** put shadows on anything resting in the page flow.
 - **Don't** use the accent decoratively inside focus mode; every accent there is a primary action, a selection, progress or "in range".

@@ -43,7 +43,7 @@ export const SessionSummary: React.FC<SessionSummaryProps> = ({ session, range, 
 
   return (
     <div className="h-full overflow-y-auto">
-      <div className="max-w-[760px] px-12 pt-12 pb-10">
+      <div className="max-w-[760px] mx-auto px-12 pt-[8vh] pb-10">
         <h1 className="text-[26px] font-semibold tracking-[-0.02em]">Session complete</h1>
 
         <p className="mt-3 text-[15px] leading-relaxed text-text-muted max-w-[60ch]">

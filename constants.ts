@@ -76,18 +76,39 @@ export const ROUTINE_TEMPLATES: { key: string; name: string; summary: string; bl
   {
     key: 'masculinization',
     name: 'Masculinization basics',
-    summary: 'Breathing, SOVT warm-up, chest resonance, open throat, pitch matching, speaking practice. Set a lower target range on Today first.',
+    summary: 'Breathing, SOVT warm-up, chest resonance, open throat, pitch matching, speaking practice. Check your target range on Today.',
     blocks: [
       { title: 'Diaphragmatic Breathing', duration: 180, description: 'Breathe low into the belly with relaxed shoulders: in through the nose (4s), out slowly (6s).' },
       { title: 'Lip Trills or Straw (SOVT)', duration: 180, description: 'Gentle "brrr" or straw phonation with easy glides. Keep it light and comfortable; this warms up without strain.' },
       { title: 'Chest Resonance Hum', duration: 240, description: 'Hum "mmm" on a comfortable low note with a hand on your chest. Aim to feel the vibration there. Don’t push your pitch down to get it.' },
       { title: 'Open Throat Yawn-Sigh', duration: 240, description: 'Start a yawn to open the back of the throat, then sigh "ahh" downward from a comfortable pitch. Let the larynx settle lower on its own, without pressing.' },
-      { title: 'Pitch Matching', duration: 300, description: 'First set your own target range: Edit next to Your voice on Today. Resona starts at 239–285 Hz, a feminization target; masculinizing voices usually aim lower, often around 85–155 Hz. Then count or say short words and keep them inside it. Never force your pitch down.' },
+      { title: 'Pitch Matching', duration: 300, description: 'Check that your target range fits your goal (Edit next to Your voice on Today); masculinizing voices often aim around 85–155 Hz. Count or say short words and keep them inside it. Never force your pitch down.' },
       { title: 'Speaking Practice', duration: 0, description: 'Read the phrases aloud with the chest resonance you found. Move on when you’re ready.', prompts: ['Good morning, how are you?', 'I’ll have a coffee, please.', 'The train leaves at half past nine.', 'Can you pass me that book?'] },
       { title: 'Cool Down', duration: 120, description: 'Soft humming or lip trills at a comfortable pitch. Stop if anything feels strained.' },
     ],
   },
+  {
+    key: 'androgynous',
+    name: 'Androgynous basics',
+    summary: 'Breathing, SOVT warm-up, flexible resonance, pitch held mid-range, speaking practice.',
+    blocks: [
+      { title: 'Diaphragmatic Breathing', duration: 180, description: 'Breathe low into the belly with relaxed shoulders: in through the nose (4s), out slowly (6s).' },
+      { title: 'Lip Trills or Straw (SOVT)', duration: 180, description: 'Gentle "brrr" or straw phonation with easy glides up and down. Light and comfortable, never pushed.' },
+      { title: 'Resonance Slides', duration: 240, description: 'Hum "ng" and slide slowly between a darker placement (big dog) and a brighter one (small dog). Notice the space in your mouth and throat, then find a middle you like.' },
+      { title: 'Pitch Matching', duration: 300, description: 'Check that your target range fits your goal (Edit next to Your voice on Today); an in-between voice often sits around 145–185 Hz. Say short words and keep them inside it without straining.' },
+      { title: 'Speaking Practice', duration: 0, description: 'Read the phrases with the middle resonance you found. Move on when you’re ready.', prompts: ['Good morning, how are you?', 'I’ll have a coffee, please.', 'The train leaves at half past nine.', 'Can you pass me that book?'] },
+      { title: 'Cool Down', duration: 120, description: 'Soft humming or lip trills at a comfortable pitch. Stop if anything feels strained.' },
+    ],
+  },
 ];
+
+// First-launch setup: what you're training toward sets a starting range and routine (both editable later)
+export const VOICE_DIRECTIONS = [
+  { key: 'feminization', label: 'Feminization', detail: 'A higher, brighter voice', range: { low: 165, high: 255 }, template: 'feminization' },
+  { key: 'masculinization', label: 'Masculinization', detail: 'A lower, fuller voice', range: { low: 85, high: 155 }, template: 'masculinization' },
+  { key: 'androgynous', label: 'Androgynous', detail: 'Somewhere in between', range: { low: 145, high: 185 }, template: 'androgynous' },
+  { key: 'custom', label: 'My own range', detail: 'Set the numbers yourself', range: null, template: null },
+] as const;
 
 export const DEFAULT_PLAN_TEXT =`Daily Plan (30-45 minutes)
 

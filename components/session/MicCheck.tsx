@@ -10,11 +10,15 @@ interface MicCheckProps {
   setSkipNextTime: (v: boolean) => void;
   onReady: () => void;
   onCancel: () => void;
+  readyLabel?: string;   // setup reuses this screen as its last step
+  cancelLabel?: string;
+  showSkip?: boolean;
+  requireMic?: boolean;  // a session needs the mic; setup can finish without one
 }
 
 const NOISE_THRESHOLD = 0.02;
 
-export const MicCheck: React.FC<MicCheckProps> = ({ deviceId, gain, setGain, skipNextTime, setSkipNextTime, onReady, onCancel }) => {
+export const MicCheck: React.FC<MicCheckProps> = ({ deviceId, gain, setGain, skipNextTime, setSkipNextTime, onReady, onCancel, readyLabel = 'Start session', cancelLabel = 'Cancel', showSkip = true, requireMic = true }) => {
   const [level, setLevel] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [noise, setNoise] = useState<'idle' | 'checking' | 'quiet' | 'noisy'>('idle');
@@ -47,7 +51,7 @@ export const MicCheck: React.FC<MicCheckProps> = ({ deviceId, gain, setGain, ski
 
   return (
     <div className="h-full overflow-y-auto">
-      <div className="max-w-[560px] px-12 pt-14 pb-10">
+      <div className="max-w-[560px] mx-auto px-12 pt-[10vh] pb-10">
         <h1 className="text-[26px] font-semibold tracking-[-0.02em]">Check your microphone</h1>
         <p className="mt-2 text-[14px] leading-relaxed text-text-muted max-w-[52ch]">
           Say a few words at the volume you’ll train at. The bar should reach about the middle without touching the end.
@@ -87,13 +91,13 @@ export const MicCheck: React.FC<MicCheckProps> = ({ deviceId, gain, setGain, ski
         </div>
 
         <div className="mt-8 flex items-center justify-between gap-4">
-          <label className="flex items-center gap-2 text-[13px] text-text-muted cursor-pointer">
+          {showSkip ? <label className="flex items-center gap-2 text-[13px] text-text-muted cursor-pointer">
             <input type="checkbox" checked={skipNextTime} onChange={e => setSkipNextTime(e.target.checked)} />
             Skip this check next time
-          </label>
+          </label> : <span />}
           <div className="flex gap-2">
-            <Button variant="ghost" onClick={onCancel}>Cancel</Button>
-            <Button size="lg" onClick={onReady} disabled={!!error}>Start session</Button>
+            <Button variant="ghost" onClick={onCancel}>{cancelLabel}</Button>
+            <Button size="lg" onClick={onReady} disabled={requireMic && !!error}>{readyLabel}</Button>
           </div>
         </div>
       </div>

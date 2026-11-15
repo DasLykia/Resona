@@ -7,7 +7,7 @@ import type { UpdateInfo } from 'velopack';
 import { Button } from './components/Button';
 import { Modal } from './components/Modal';
 import { Segmented } from './components/Segmented';
-import { Sidebar, Page } from './components/shell/Sidebar';
+import { Sidebar, Route, PROGRESS_PAGES, SETTINGS_PAGES } from './components/shell/Sidebar';
 import { TitleBar } from './components/shell/TitleBar';
 import { LevelProgressModal } from './components/LevelProgressModal';
 
@@ -17,16 +17,20 @@ import {
 } from './types';
 import { 
   DEFAULT_SETTINGS, INITIAL_STATS, STORAGE_KEYS, ACHIEVEMENTS_LIST, 
-  XP_PER_MINUTE, XP_PER_SESSION, XP_LEVEL_BASE, THEMES, DEFAULT_ROUTINE, DEFAULT_PLAN_TEXT
+  XP_PER_MINUTE, XP_PER_SESSION, XP_LEVEL_BASE, THEMES, DEFAULT_ROUTINE, DEFAULT_PLAN_TEXT, ROUTINE_TEMPLATES, VOICE_DIRECTIONS
 } from './constants';
 import { 
   loadFromStorage, saveToStorage, saveAudioBlob, deleteAudioBlob, clearAllAudioBlobs
 } from './services/storage';
 import { audioService, AudioService } from './services/audio';
 import { calculateStreaks } from './services/stats';
-import { migrateRoutines, routineLength } from './services/routines';
-import { RoutinesView, RoutinePicker } from './components/routines/RoutinesView';
-import { SettingsView } from './components/settings/SettingsView';
+import { migrateRoutines, routineLength, copyRoutine } from './services/routines';
+import { RoutinePage, RoutinePicker, NewRoutineMenu } from './components/routines/RoutinesView';
+import { RoutineNameTitle } from './components/routines/RoutineEditor';
+import { ThisWeek } from './components/today/ThisWeek';
+import { PageHint } from './components/PageHint';
+import { Setup, SetupResult } from './components/onboarding/Setup';
+import { SettingsView, SettingsPageId } from './components/settings/SettingsView';
 import { CommandMenu, Command, matches } from './components/CommandMenu';
 import { computePitchStats, rangeAround, rangeCenter, strainFromEffort } from './services/pitchStats';
 import { RangeBand } from './components/session/RangeBand';
@@ -153,8 +157,7 @@ const App: React.FC = () => {
   const [updateAvailable, setUpdateAvailable] = useState<UpdateInfo | null>(null);
 
   // Modals & UI State
-  const [page, setPage] = useState<Page>('today');
-  const [showWelcome, setShowWelcome] = useState(false);
+  const [route, setRoute] = useState<Route>({ section: 'today', sub: '' });
   const [showLevelModal, setShowLevelModal] = useState(false);
   const [showCommands, setShowCommands] = useState(false);
   
@@ -216,13 +219,6 @@ const App: React.FC = () => {
             }).catch(console.error);
         }
     }
-
-    // Check Welcome
-    const welcomeShown = localStorage.getItem(STORAGE_KEYS.WELCOME_SHOWN);
-    if (!welcomeShown) {
-        setShowWelcome(true);
-        localStorage.setItem(STORAGE_KEYS.WELCOME_SHOWN, 'true');
-    }
   }, []);
 
   // Persistence
@@ -255,7 +251,7 @@ const App: React.FC = () => {
   const jumpToSession = (sessionId: string) => {
       if (!sessions.some(s => s.id === sessionId)) return; // e.g. a kept strain mark whose session was deleted
       setHighlight({ id: sessionId, at: Date.now() });
-      setPage('progress');
+      setRoute({ section: 'progress', sub: 'sessions' });
   };
 
   // --- Session Flow ---
@@ -678,75 +674,106 @@ const App: React.FC = () => {
       .filter(x => x.stats.median !== null), [sessions, settings.targetRange]);
   const latest = recentMedians[0];
 
-  const navigate = (p: Page) => {
-      setPage(p);
-      setHighlight(null);
+  const finishSetup = (r: SetupResult) => {
+      audioService.close();
+      const isUpdate = sessions.length > 0 || stats.totalSessions > 0;
+      setSettings(s => {
+          const tpl = ROUTINE_TEMPLATES.find(t => t.key === VOICE_DIRECTIONS.find(d => d.key === r.direction)?.template);
+          let routines = s.routines, activeRoutineId = s.activeRoutineId;
+          if (tpl) {
+              const copy = copyRoutine({ name: tpl.name, blocks: tpl.blocks.map(b => ({ ...b, id: '' })) }, tpl.name, () => crypto.randomUUID());
+              // New install: replace the untouched default. Update: keep everything and add the template.
+              routines = isUpdate ? [...s.routines, copy] : [copy];
+              activeRoutineId = copy.id;
+          }
+          const targetRange = r.range ?? s.targetRange;
+          return { ...s, routines, activeRoutineId, targetRange, targetPitch: rangeCenter(targetRange), trainingDays: r.trainingDays, setupDone: true };
+      });
+      navigate({ section: 'today', sub: '' });
   };
 
-  const todayPage = (
-    <PageFrame title="Today" aside={<span className="text-[13px] text-text-muted">{dateLabel}</span>}>
-      <div className="flex items-center justify-between gap-6 py-5 border-y border-border">
-        <div className="min-w-0 flex-1">
-          <RoutinePicker routines={settings.routines} activeId={activeRoutineOf(settings).id}
-            onPick={(id) => setSettings(s => ({ ...s, activeRoutineId: id }))} onEdit={() => navigate('routines')} />
-          <div className="text-[13px] text-text-muted mt-0.5">
-            {routineIsEmpty
-              ? <>No exercises yet. <button onClick={() => navigate('routines')} className="underline decoration-border-strong underline-offset-[3px] hover:text-text transition-colors">Add exercises</button></>
-              : <><span className="font-mono tabular-nums">{routineBlocks.length}</span> {routineBlocks.length === 1 ? 'exercise' : 'exercises'} · {routineLength(activeRoutineOf(settings))}</>}
-          </div>
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <Button variant="ghost" onClick={() => initiateSession('free')}>Free session</Button>
-          <Button size="lg" onClick={() => initiateSession('routine')} disabled={routineIsEmpty} className="min-w-[132px]">Start session</Button>
+  const navigate = (r: Route) => {
+      setRoute(r);
+      setHighlight(null);
+  };
+  const goRoutine = (id = activeRoutineOf(settings).id) => navigate({ section: 'routines', sub: id });
+
+  // One-line explanations, shown until dismissed (Settings › Appearance can bring them back)
+  const hintKey = (r: Route) => (r.section === 'progress' ? `progress/${r.sub}` : r.section);
+  const showHint = (k: string) => !(settings.dismissedHints || []).includes(k);
+  const dismissHint = (k: string) => setSettings(s => ({ ...s, dismissedHints: [...(s.dismissedHints || []), k] }));
+  const hint = (k: string, text: string) => ({ show: showHint(k), onDismiss: () => dismissHint(k), text });
+
+  const todayStart = (
+    <div className="flex items-center justify-between gap-6 py-5 border-y border-border">
+      <div className="min-w-0 flex-1">
+        <RoutinePicker routines={settings.routines} activeId={activeRoutineOf(settings).id}
+          onPick={(id) => setSettings(s => ({ ...s, activeRoutineId: id }))} onEdit={() => goRoutine()} />
+        <div className="text-[13px] text-text-muted mt-0.5">
+          {routineIsEmpty
+            ? <>No exercises yet. <button onClick={() => goRoutine()} className="underline decoration-border-strong underline-offset-[3px] hover:text-text transition-colors">Add exercises</button></>
+            : <><span className="font-mono tabular-nums">{routineBlocks.length}</span> {routineBlocks.length === 1 ? 'exercise' : 'exercises'} · {routineLength(activeRoutineOf(settings))}</>}
         </div>
       </div>
+      <div className="flex items-center gap-2 shrink-0">
+        <Button variant="ghost" onClick={() => initiateSession('free')}>Free session</Button>
+        <Button size="lg" onClick={() => initiateSession('routine')} disabled={routineIsEmpty} className="min-w-[132px]">Start session</Button>
+      </div>
+    </div>
+  );
 
-      <section className="mt-8">
-        <div className="flex items-baseline justify-between mb-5">
-          <h2 className="text-[15px] font-semibold">Your voice</h2>
-          <RangeEditor range={settings.targetRange} onChange={setRange} />
-        </div>
-        <RangeBand
-          range={settings.targetRange}
-          markers={recentMedians.map((m, i) => ({ hz: m.stats.median!, current: i === 0, label: i === 0 ? String(m.stats.median) : undefined })).reverse()}
-        />
-        <p className="mt-3 text-[13px] text-text-muted">
-          {latest
-            ? <>Last session: median <span className="font-mono tabular-nums text-text">{latest.stats.median}</span>{' '}Hz, <span className="font-mono tabular-nums text-text">{latest.stats.inRangePct}%</span> in range.{recentMedians.length > 1 && ' Grey marks are the sessions before.'}</>
-            : 'After your first session, your median pitch shows on this scale.'}
-        </p>
-      </section>
+  const todayVoice = (
+    <section>
+      <div className="flex items-baseline justify-between mb-5">
+        <h2 className="text-[15px] font-semibold">Your voice</h2>
+        <RangeEditor range={settings.targetRange} onChange={setRange} />
+      </div>
+      <RangeBand
+        range={settings.targetRange}
+        markers={recentMedians.map((m, i) => ({ hz: m.stats.median!, current: i === 0, label: i === 0 ? String(m.stats.median) : undefined })).reverse()}
+      />
+      <p className="mt-3 text-[13px] text-text-muted">
+        {latest
+          ? <>Last session: median <span className="font-mono tabular-nums text-text">{latest.stats.median}</span>{' '}Hz, <span className="font-mono tabular-nums text-text">{latest.stats.inRangePct}%</span> in range.{recentMedians.length > 1 && ' Grey marks are the sessions before.'}</>
+          : 'After your first session, your median pitch shows on this scale.'}
+      </p>
+    </section>
+  );
 
-      {routineBlocks.length > 0 && (
-        <section className="mt-10">
-          <h2 className="text-[15px] font-semibold mb-2">Today’s routine</h2>
-          <motion.ol
-            initial="hidden"
-            animate="shown"
-            variants={{ shown: { transition: { staggerChildren: 0.03 } } }}
+  const todayRoutine = routineBlocks.length > 0 && (
+    <section>
+      <h2 className="text-[15px] font-semibold mb-2">Today’s routine</h2>
+      <motion.ol initial="hidden" animate="shown" variants={{ shown: { transition: { staggerChildren: 0.03 } } }}>
+        {routineBlocks.map((b, i) => (
+          <motion.li
+            key={b.id}
+            variants={{ hidden: { opacity: 0, y: 4 }, shown: { opacity: 1, y: 0, transition: { duration: 0.2, ease: EASE_OUT } } }}
+            className="grid grid-cols-[1.75rem_1fr_auto] items-baseline gap-2 py-2.5 border-b border-border text-[13.5px]"
           >
-            {routineBlocks.map((b, i) => (
-              <motion.li
-                key={b.id}
-                variants={{ hidden: { opacity: 0, y: 4 }, shown: { opacity: 1, y: 0, transition: { duration: 0.2, ease: EASE_OUT } } }}
-                className="grid grid-cols-[1.75rem_1fr_auto] items-baseline gap-2 py-2.5 border-b border-border text-[13.5px]"
-              >
-                <span className="font-mono tabular-nums text-[12px] text-text-muted">{i + 1}</span>
-                <span className="truncate">{b.title}</span>
-                <span className="font-mono tabular-nums text-[12.5px] text-text-muted">
-                  {b.duration === 0 ? 'open' : formatTime(b.duration)}
-                </span>
-              </motion.li>
-            ))}
-          </motion.ol>
-        </section>
-      )}
+            <span className="font-mono tabular-nums text-[12px] text-text-muted">{i + 1}</span>
+            <span className="truncate">{b.title}</span>
+            <span className="font-mono tabular-nums text-[12.5px] text-text-muted">{b.duration === 0 ? 'open' : formatTime(b.duration)}</span>
+          </motion.li>
+        ))}
+      </motion.ol>
+    </section>
+  );
 
-      <div className="mt-10">
-        <SessionFocusBlock
-          focusText={settings.sessionFocus}
-          onUpdate={(txt) => setSettings(s => ({...s, sessionFocus: txt}))}
-        />
+  // Wide windows: start + routine on the left; this week, your voice and focus on the right
+  const todayPage = (
+    <PageFrame title="Today" wide aside={<span className="text-[13px] text-text-muted">{dateLabel}</span>}
+      hint={hint('today', 'Start runs the routine shown here; Free session is a stopwatch with live pitch and recording. Your voice shows your target range and where your recent sessions landed.')}>
+      <div className="grid grid-cols-1 2xl:grid-cols-[minmax(0,1fr)_minmax(0,0.9fr)] gap-x-16 gap-y-10 items-start">
+        <div className="space-y-10">
+          {todayStart}
+          {todayRoutine}
+        </div>
+        <div className="space-y-10">
+          <ThisWeek secondsByDay={stats.history} restDays={stats.sickDays} trainingDays={settings.trainingDays}
+            streak={stats.currentStreak} onToggleRest={toggleRestDay} />
+          {todayVoice}
+          <SessionFocusBlock focusText={settings.sessionFocus} onUpdate={(txt) => setSettings(s => ({...s, sessionFocus: txt}))} />
+        </div>
       </div>
     </PageFrame>
   );
@@ -799,7 +826,7 @@ const App: React.FC = () => {
           />
         )}
         {appState === AppState.POST_SESSION && !lastResult && (
-          <div className="max-w-[560px] px-12 pt-14">
+          <div className="max-w-[560px] mx-auto px-12 pt-[10vh]">
             <h1 className="text-[26px] font-semibold tracking-[-0.02em]">Session not saved</h1>
             <p className={`mt-2 text-[14px] leading-relaxed max-w-[52ch] ${saveError ? 'text-danger' : 'text-text-muted'}`}>
               {saveError ?? <>It lasted <span className="font-mono tabular-nums text-text">{activeSeconds()}</span> s, under {MIN_SAVED_SECONDS} seconds, so Resona treated it as an accidental start. It doesn’t count toward your streak or XP.</>}
@@ -844,33 +871,35 @@ const App: React.FC = () => {
       if (s) jumpToSession(s.id);
   };
 
-  const progressPage = (
-    <PageFrame title="Progress" wide>
-      <Section title="Is your voice changing?">
+  const consistencySentence = (
+    <p className="text-[15px] leading-relaxed text-text-muted mb-6 max-w-[68ch]">
+      Current streak <Num unit={plural(stats.currentStreak, 'day')}>{stats.currentStreak}</Num>, longest <Num unit={plural(longestStreak, 'day')}>{longestStreak}</Num>.{' '}
+      You trained on <Num unit={plural(Object.keys(stats.history).length, 'day')}>{Object.keys(stats.history).length}</Num> for{' '}
+      {totalMinutes >= 60 && <><Num unit="h">{Math.floor(totalMinutes / 60)}</Num> </>}<Num unit="min">{totalMinutes % 60}</Num> across{' '}
+      <Num unit={plural(stats.totalSessions, 'session')}>{stats.totalSessions}</Num>, with <Num unit="MB">{recordingMB.toFixed(1)}</Num> of recordings.
+    </p>
+  );
+
+  const progressPages: Record<string, React.ReactNode> = {
+    overview: (
+      <PageFrame title="Is your voice changing?" wide hint={hint('progress/overview', 'Each column is one session: its median pitch against your target range, how much of it was in range, and how strained your voice felt. Click a column to open that session.')}>
         <PitchTrend points={trendPoints} range={settings.targetRange} onSelect={jumpToSession} />
-      </Section>
-
-      <Section title="Then and now">
+      </PageFrame>
+    ),
+    compare: (
+      <PageFrame title="Then and now" wide hint={hint('progress/compare', 'Pick an early and a recent recording, then switch between Then and Now while it plays. You hear the same moment in both.')}>
         <CompareRecordings sessions={sessions} range={settings.targetRange} title={titleOf} />
-      </Section>
-
-      <Section title="Consistency">
-        <p className="text-[15px] leading-relaxed text-text-muted mb-6 max-w-[68ch]">
-          Current streak <Num unit={plural(stats.currentStreak, 'day')}>{stats.currentStreak}</Num>, longest <Num unit={plural(longestStreak, 'day')}>{longestStreak}</Num>.{' '}
-          You trained on <Num unit={plural(Object.keys(stats.history).length, 'day')}>{Object.keys(stats.history).length}</Num> for{' '}
-          {totalMinutes >= 60 && <><Num unit="h">{Math.floor(totalMinutes / 60)}</Num> </>}<Num unit="min">{totalMinutes % 60}</Num> across{' '}
-          <Num unit={plural(stats.totalSessions, 'session')}>{stats.totalSessions}</Num>, with <Num unit="MB">{recordingMB.toFixed(1)}</Num> of recordings.
-        </p>
-        <ActivityCalendar
-          minutesByDay={stats.history}
-          restDays={stats.sickDays}
-          trainingDays={settings.trainingDays}
-          onToggleRest={toggleRestDay}
-          onOpenDay={openDay}
-        />
-      </Section>
-
-      <Section title="Sessions">
+      </PageFrame>
+    ),
+    calendar: (
+      <PageFrame title="Calendar" wide hint={hint('progress/calendar', 'Tinted days are days you trained. Click an empty past day to mark it as a rest day, or a trained day to open its session.')}>
+        {consistencySentence}
+        <ActivityCalendar minutesByDay={stats.history} restDays={stats.sickDays} trainingDays={settings.trainingDays}
+          onToggleRest={toggleRestDay} onOpenDay={openDay} />
+      </PageFrame>
+    ),
+    sessions: (
+      <PageFrame title="Sessions" wide hint={hint('progress/sessions', 'Every saved session with its recording, pitch and note. Search by date, routine or note.')}>
         <SessionList
           sessions={sessions}
           range={settings.targetRange}
@@ -883,16 +912,17 @@ const App: React.FC = () => {
           onRemoveRecording={handleDeleteRecording}
         />
         {otherRecordings.length > 0 && (
-          <div className="mt-10">
+          <div className="mt-10 max-w-[1000px]">
             <h3 className="text-[15px] font-semibold mb-1">Recordings without a session</h3>
             <p className="text-[13px] text-text-muted mb-3">Kept when their session was deleted.</p>
             <OtherRecordings recordings={otherRecordings} onDelete={handleDeleteRecording} />
           </div>
         )}
-      </Section>
-
-      <Section title="Goals and achievements">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-12 gap-y-10">
+      </PageFrame>
+    ),
+    goals: (
+      <PageFrame title="Goals and achievements" wide hint={hint('progress/goals', 'Goals count from the day you add them. Achievements unlock on their own as you train.')}>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-16 gap-y-10 max-w-[1400px]">
           <Goals
             goals={goals}
             stats={stats}
@@ -903,42 +933,48 @@ const App: React.FC = () => {
           />
           <Achievements unlockedIds={stats.unlockedAchievements} />
         </div>
-      </Section>
-    </PageFrame>
-  );
+      </PageFrame>
+    ),
+  };
 
-  const routinesPage = (
-    <PageFrame title="Routines" wide>
-      <RoutinesView
+  const shownRoutine = settings.routines.find(r => r.id === route.sub) ?? activeRoutineOf(settings);
+  const routinePage = (
+    <PageFrame wide title={<RoutineNameTitle routine={shownRoutine} onRename={(name) => setSettings(s => ({ ...s, routines: s.routines.map(r => r.id === shownRoutine.id ? { ...r, name } : r) }))} />} hint={hint('routines', 'Edit the exercises here. Drag the handle or use the arrow keys to reorder. Use on Today makes Start run this routine.')}>
+      <RoutinePage
+        routine={shownRoutine}
         routines={settings.routines}
         activeId={activeRoutineOf(settings).id}
         onChange={(routines) => setSettings(s => ({ ...s, routines }))}
         onSetActive={(id) => setSettings(s => ({ ...s, activeRoutineId: id }))}
+        onSelect={(id) => goRoutine(id)}
+        onStart={(id) => { setSettings(s => ({ ...s, activeRoutineId: id })); initiateSession('routine'); }}
       />
     </PageFrame>
   );
 
+  const settingsPageId = (SETTINGS_PAGES.some(p => p.id === route.sub) ? route.sub : 'appearance') as SettingsPageId;
   const settingsPage = (
-    <PageFrame title="Settings" narrow>
-      <SettingsView settings={settings} update={(patch) => setSettings(s => ({ ...s, ...patch }))} stats={stats}
-        appVersion={appVersion} onReset={handleResetApp} onInstallUpdate={installUpdate} />
+    <PageFrame title={SETTINGS_PAGES.find(p => p.id === settingsPageId)!.label} narrow hint={hint('settings', 'Changes apply right away. There is nothing to save.')}>
+      <SettingsView page={settingsPageId} settings={settings} update={(patch) => setSettings(s => ({ ...s, ...patch }))} stats={stats}
+        appVersion={appVersion} onReset={handleResetApp} onInstallUpdate={installUpdate}
+        onShowHintsAgain={() => { setSettings(s => ({ ...s, dismissedHints: [] })); setStatusMessage('Page hints will show again'); }} />
     </PageFrame>
   );
 
-  const pages: Record<Page, React.ReactNode> = {
-    today: todayPage,
-    progress: progressPage,
-    routines: routinesPage,
-    settings: settingsPage,
-  };
+  const currentPage =
+    route.section === 'today' ? todayPage
+    : route.section === 'progress' ? (progressPages[route.sub] ?? progressPages.overview)
+    : route.section === 'routines' ? routinePage
+    : settingsPage;
 
   // --- COMMAND MENU (Ctrl+K) ---
   const todayKey = getLocalISODate();
   const trainedToday = !!stats.history[todayKey];
   const commands: Command[] = [
-      ...(['today', 'progress', 'routines', 'settings'] as Page[]).map(p => ({
-          id: `go-${p}`, group: 'Go to', label: p[0].toUpperCase() + p.slice(1), run: () => navigate(p),
-      })),
+      { id: 'go-today', group: 'Go to', label: 'Today', run: () => navigate({ section: 'today', sub: '' }) },
+      ...PROGRESS_PAGES.map(p => ({ id: `go-progress-${p.id}`, group: 'Go to', label: p.label, detail: 'Progress', run: () => navigate({ section: 'progress', sub: p.id }) })),
+      ...settings.routines.map(r => ({ id: `go-routine-${r.id}`, group: 'Go to', label: r.name, detail: 'Routine', keywords: 'edit routine', run: () => goRoutine(r.id) })),
+      ...SETTINGS_PAGES.map(p => ({ id: `go-settings-${p.id}`, group: 'Go to', label: p.label, detail: 'Settings', keywords: 'settings options', run: () => navigate({ section: 'settings', sub: p.id }) })),
       ...settings.routines.filter(r => r.blocks.length > 0).map(r => ({
           id: `start-${r.id}`, group: 'Start a session', label: r.name, detail: routineLength(r),
           keywords: 'start train routine', run: () => { setSettings(s => ({ ...s, activeRoutineId: r.id })); initiateSession('routine'); },
@@ -979,8 +1015,11 @@ const App: React.FC = () => {
 
       <div className="flex-1 flex min-h-0 relative">
         <Sidebar
-          page={page}
+          route={route}
           onNavigate={navigate}
+          routines={settings.routines}
+          activeRoutineId={activeRoutineOf(settings).id}
+          newRoutine={<NewRoutineMenu onCreate={(r) => { setSettings(s => ({ ...s, routines: [...s.routines, r] })); goRoutine(r.id); }} />}
           disabled={inSession}
           streak={stats.currentStreak}
           level={stats.level}
@@ -997,13 +1036,13 @@ const App: React.FC = () => {
         <main className="flex-1 min-w-0 relative bg-background rounded-tl-[10px] border-l border-t border-border overflow-clip">
           <AnimatePresence initial={false}>
             <motion.div
-              key={page}
+              key={`${route.section}/${route.sub}`}
               className="absolute inset-0 overflow-y-auto"
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0, transition: { duration: 0.2, ease: EASE_OUT } }}
               exit={{ opacity: 0, transition: { duration: 0.16, ease: EASE_OUT } }}
             >
-              {pages[page]}
+              {currentPage}
             </motion.div>
           </AnimatePresence>
         </main>
@@ -1021,22 +1060,30 @@ const App: React.FC = () => {
             </motion.div>
           )}
         </AnimatePresence>
-      </div>
 
-      <Modal isOpen={showWelcome} onClose={() => setShowWelcome(false)} title="Welcome to Resona" width="max-w-md">
-        <div className="space-y-4 text-[13.5px] leading-relaxed">
-            <p className="text-text">Start a session from <strong className="font-semibold">Today</strong> whenever you're ready to train.</p>
-            <p className="text-text-muted">
-                No training days are set yet, so every day counts toward your streak. Pick your days in <strong className="font-semibold text-text">Settings</strong> and rest days in between won't break it.
-            </p>
-            <p className="text-text-muted">
-                Ill or your voice needs a break? Mark the day under <strong className="font-semibold text-text">Progress → Rest days</strong>.
-            </p>
-            <div className="flex justify-end pt-2">
-                <Button onClick={() => setShowWelcome(false)}>Get started</Button>
-            </div>
-        </div>
-      </Modal>
+        {/* First launch (and once after updating from 1.0.5): three steps that set things up */}
+        <AnimatePresence>
+          {!settings.setupDone && !inSession && (
+            <motion.div
+              className="absolute inset-0 z-40 bg-background border-t border-border"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1, transition: { duration: 0.22, ease: EASE_OUT } }}
+              exit={{ opacity: 0, scale: 0.985, transition: { duration: 0.18, ease: EASE_OUT } }}
+            >
+              <Setup
+                isUpdate={sessions.length > 0 || stats.totalSessions > 0}
+                currentRange={settings.targetRange}
+                trainingDays={settings.trainingDays}
+                deviceId={settings.inputDeviceId}
+                gain={settings.micGain}
+                setGain={(g) => setSettings(s => ({ ...s, micGain: g }))}
+                onFinish={finishSetup}
+                onSkip={() => { audioService.close(); setSettings(s => ({ ...s, setupDone: true })); }}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
 
       <LevelProgressModal isOpen={showLevelModal} onClose={() => setShowLevelModal(false)} stats={stats} />
       <CommandMenu open={showCommands} onClose={() => setShowCommands(false)} commands={commands} search={searchSessions} />
@@ -1054,22 +1101,20 @@ const Num: React.FC<{ children: React.ReactNode; unit?: string }> = ({ children,
 const plural = (n: number, word: string) => (n === 1 ? word : `${word}s`);
 const MIN_SAVED_SECONDS = 30; // shorter sessions are treated as accidental until "Save anyway"
 
-// Left-anchored next to the nav like Windows Settings; `fill` lets an editor take the pane's remaining height
-const PageFrame: React.FC<{ title: string; aside?: React.ReactNode; wide?: boolean; narrow?: boolean; fill?: boolean; children: React.ReactNode }> = ({ title, aside, wide, narrow, fill, children }) => (
-  <div className={`px-10 pt-7 ${fill ? 'h-full flex flex-col pb-6' : 'pb-16'} ${wide ? 'max-w-[1200px]' : narrow ? 'max-w-[760px]' : 'max-w-[1000px]'}`}>
-    <header className="flex items-end justify-between gap-6 mb-7 min-h-9 shrink-0">
-      <h1 className="text-[26px] font-semibold tracking-[-0.02em] leading-none">{title}</h1>
+// Left-anchored next to the nav like Windows Settings. `wide` pages grow into columns on big screens
+// (up to 2200px); settings stay a readable 760px. The hint is the page's one-line first-visit explanation.
+const PageFrame: React.FC<{
+  title: React.ReactNode; aside?: React.ReactNode; wide?: boolean; narrow?: boolean; children: React.ReactNode;
+  hint?: { show: boolean; onDismiss: () => void; text: string };
+}> = ({ title, aside, wide, narrow, children, hint }) => (
+  <div className={`px-10 2xl:px-14 pt-7 pb-16 ${wide ? 'max-w-[2200px]' : narrow ? 'max-w-[760px]' : 'max-w-[1000px]'}`}>
+    <header className="flex items-end justify-between gap-6 mb-7 min-h-9">
+      <h1 className="flex-1 min-w-0 text-[26px] font-semibold tracking-[-0.02em] leading-none">{title}</h1>
       {aside}
     </header>
-    {fill ? <div className="flex-1 min-h-0">{children}</div> : children}
-  </div>
-);
-
-const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
-  <section className="mt-10 first:mt-0 pt-8 first:pt-0 border-t first:border-t-0 border-border">
-    <h2 className="text-[15px] font-semibold mb-4">{title}</h2>
+    {hint && <PageHint show={hint.show} onDismiss={hint.onDismiss}>{hint.text}</PageHint>}
     {children}
-  </section>
+  </div>
 );
 
 export default App;
