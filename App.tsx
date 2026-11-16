@@ -34,7 +34,7 @@ import { PageHint } from './components/PageHint';
 import { Setup, SetupResult } from './components/onboarding/Setup';
 import { SettingsView } from './components/settings/SettingsView';
 import { CommandMenu, Command, matches } from './components/CommandMenu';
-import { computePitchStats, rangeAround, rangeCenter, strainFromEffort } from './services/pitchStats';
+import { computePitchStats, rangeAround, rangeCenter, strainFromEffort, STRAIN_LABELS } from './services/pitchStats';
 import { RangeBand } from './components/session/RangeBand';
 import { RangeEditor } from './components/session/RangeEditor';
 import { FocusSession } from './components/session/FocusSession';
@@ -130,7 +130,11 @@ const App: React.FC = () => {
   const [sessionKind, setSessionKind] = useState<'routine' | 'free'>('routine');
   const [sessionRoutineId, setSessionRoutineId] = useState('');
   const [trainAnyway, setTrainAnyway] = useState(false); // rest day on Today, but the user wants to train
-  const sessionRoutine = settings.routines.find(r => r.id === sessionRoutineId) ?? activeRoutineOf(settings);
+  const [halfTime, setHalfTime] = useState(false); // "Shorter session" after a strained week
+  const baseRoutine = settings.routines.find(r => r.id === sessionRoutineId) ?? activeRoutineOf(settings);
+  const sessionRoutine = halfTime
+      ? { ...baseRoutine, name: `${baseRoutine.name} (half time)`, blocks: baseRoutine.blocks.map(b => (b.duration ? { ...b, duration: Math.max(15, Math.round(b.duration / 2)) } : b)) }
+      : baseRoutine;
   const [lastResult, setLastResult] = useState<{ sessionId: string; xpGained: number; levelUpTo: number | null } | null>(null);
   const startTimeRef = useRef<number>(0);
   const endTimeRef = useRef<number>(0);
@@ -221,7 +225,8 @@ const App: React.FC = () => {
   // --- Session Flow ---
 
   // The routine is fixed when the session starts, so passing midnight mid-session can't swap it
-  const initiateSession = (kind: 'routine' | 'free', routineId = activeRoutineOf(settings).id) => {
+  const initiateSession = (kind: 'routine' | 'free', routineId = activeRoutineOf(settings).id, half = false) => {
+    setHalfTime(half);
     setSessionKind(kind);
     setSessionRoutineId(routineId);
     if (settings.skipPreflight) {
@@ -750,11 +755,25 @@ const App: React.FC = () => {
   );
 
   // One job: start today's session; the week underneath shows how it's going. Centered, calm on wide screens.
+  // Average strain of the last 7 days above "Some effort": suggest a rest day or a shorter session (not once trained or resting today)
+  const recentStrain = sessions.filter(s => s.startTime >= Date.now() - 7 * 86400000).map(sessionStrain).filter((x): x is number => x !== null);
+  const avgStrain = recentStrain.length ? recentStrain.reduce((a, b) => a + b, 0) / recentStrain.length : 0;
+  const strainNote = avgStrain > 3 && !restToday && !stats.history[getLocalISODate()] && (
+    <div className="-mt-6 pl-3 border-l-2 border-text/25 text-[13.5px] leading-relaxed">
+      <p>Your sessions this week felt <span className="font-medium">{STRAIN_LABELS[Math.min(4, Math.round(avgStrain) - 1)].toLowerCase()}</span> on average. Going easier today helps your voice recover.</p>
+      <p className="mt-1 flex gap-4 text-text-muted">
+        <button onClick={() => toggleRestDay(getLocalISODate())} className="underline decoration-border-strong underline-offset-[3px] hover:text-text transition-colors">Take a rest day</button>
+        {!routineIsEmpty && <button onClick={() => initiateSession('routine', undefined, true)} className="underline decoration-border-strong underline-offset-[3px] hover:text-text transition-colors">Shorter session (every exercise at half time)</button>}
+      </p>
+    </div>
+  );
+
   const todayPage = (
     <PageFrame title="Today" center aside={<span className="text-[13px] text-text-muted">{dateLabel}</span>}
       hint={hint('today', 'Start runs the routine shown here; click its name to switch routines. Free session is a stopwatch with live pitch and recording.')}>
       <div className="space-y-12">
         {todayStart}
+        {strainNote}
         <ThisWeek secondsByDay={stats.history} restDays={stats.sickDays} trainingDays={settings.trainingDays}
           streak={stats.currentStreak} onToggleRest={toggleRestDay} onTimeOff={markTimeOff} />
       </div>

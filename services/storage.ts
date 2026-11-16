@@ -79,3 +79,12 @@ export const deleteAudioBlob =async (id: string): Promise<void> => {
     request.onerror = () => reject(request.error);
   });
 };
+// Ids of every stored audio blob (for backups)
+export const listAudioIds = async (): Promise<string[]> => {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const request = db.transaction(STORE_NAME, 'readonly').objectStore(STORE_NAME).getAllKeys();
+    request.onsuccess = () => resolve(request.result.map(String));
+    request.onerror = () => reject(request.error);
+  });
+};

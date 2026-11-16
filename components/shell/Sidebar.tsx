@@ -16,6 +16,7 @@ export const SETTINGS_PAGES = [
   { id: 'training', label: 'Training' },
   { id: 'microphone', label: 'Microphone' },
   { id: 'data', label: 'Progress and data' },
+  { id: 'backup', label: 'Backup' },
   { id: 'updates', label: 'Updates' },
 ] as const;
 

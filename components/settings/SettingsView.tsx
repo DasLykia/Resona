@@ -8,6 +8,7 @@ import { ConfirmButton } from '../ConfirmButton';
 import { Popover } from '../Popover';
 import { Segmented } from '../Segmented';
 import { Switch } from '../Switch';
+import { applyBackup, createBackup, ParsedBackup, readBackup, summarize } from '../../services/backup';
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const FULL_DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -153,6 +154,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ settings, update, st
         </Row>
       </Group>
 
+      <Group id="backup" title="Backup">
+        <BackupRows />
+      </Group>
+
       <Group id="updates" title="Updates">
         <Row label="Check for updates when Resona starts">
           <Switch label="Check for updates when Resona starts" checked={settings.checkUpdatesOnStartup} onChange={v => update({ checkUpdatesOnStartup: v })} />
@@ -247,3 +252,69 @@ export const TrainingDaysPicker: React.FC<{ days: number[]; onChange: (days: num
     })}
   </div>
 );
+
+const plural = (n: number, w: string) => <><span className="font-mono tabular-nums">{n}</span> {n === 1 ? w : `${w}s`}</>;
+
+// Back up to one .resona file; restore replaces everything here after an inline confirm
+const BackupRows: React.FC = () => {
+  const [withAudio, setWithAudio] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [made, setMade] = useState<React.ReactNode>(null);
+  const [restore, setRestore] = useState<{ parsed: ParsedBackup } | { error: string } | null>(null);
+  const [applying, setApplying] = useState(false);
+  const fileInput = useRef<HTMLInputElement>(null);
+
+  const backUp = async () => {
+    setBusy(true); setMade(null);
+    try {
+      const r = await createBackup(withAudio);
+      setMade(<>Saved {plural(r.sessions, 'session')}{withAudio && <> and {plural(r.recordings, 'recording')}</>} ({(r.bytes / 1e6).toFixed(1)} MB).</>);
+    } catch (e) {
+      console.error('Backup failed', e);
+      setMade('Backup failed. Try again.');
+    }
+    setBusy(false);
+  };
+  const choose = async (file?: File) => {
+    if (!file) return;
+    try { setRestore({ parsed: await readBackup(file) }); }
+    catch (e) { setRestore({ error: e instanceof Error ? e.message : 'This file can’t be restored.' }); }
+    if (fileInput.current) fileInput.current.value = '';
+  };
+  const s = restore && 'parsed' in restore ? summarize(restore.parsed) : null;
+
+  return (
+    <>
+      <Row label="Back up" hint={made ?? 'Saves your sessions, routines, goals and settings as one file, for moving to another PC or keeping safe.'}>
+        <label className="flex items-center gap-2 text-[12.5px] text-text-muted cursor-pointer">
+          <input type="checkbox" checked={withAudio} onChange={e => setWithAudio(e.target.checked)} />
+          Include recordings
+        </label>
+        <Button variant="secondary" size="sm" onClick={backUp} isLoading={busy}>Back up</Button>
+      </Row>
+      <Row label="Restore from backup" hint={restore && 'error' in restore ? <span className="text-danger">{restore.error}</span> : 'Replaces everything on this computer with a backup file.'}>
+        <input ref={fileInput} type="file" accept=".resona" className="hidden" onChange={e => choose(e.target.files?.[0])} />
+        <Button variant="secondary" size="sm" onClick={() => fileInput.current?.click()}>Choose file…</Button>
+      </Row>
+      {s && (
+        <div className="py-3.5 border-b border-border">
+          <p className="text-[13.5px] leading-relaxed max-w-[60ch]">
+            Replace everything on this computer with the backup from{' '}
+            {new Date(s.createdAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}?{' '}
+            It has {plural(s.sessions, 'session')}{s.includesRecordings ? <> and {plural(s.recordings, 'recording')}</> : <>, without recordings, so the recordings already here stay</>}.
+            {' '}This can’t be undone.
+          </p>
+          <div className="mt-3 flex gap-2">
+            <Button variant="ghost" size="sm" onClick={() => setRestore(null)} disabled={applying}>Cancel</Button>
+            <Button variant="danger" size="sm" isLoading={applying}
+              onClick={async () => {
+                setApplying(true);
+                try { await applyBackup((restore as { parsed: ParsedBackup }).parsed); }
+                catch (e) { setApplying(false); setRestore({ error: e instanceof Error ? `Restore failed: ${e.message}` : 'Restore failed.' }); }
+              }}>Replace everything</Button>
+          </div>
+        </div>
+      )}
+    </>
+  );
+};
