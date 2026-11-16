@@ -14,17 +14,19 @@ export const Journey: React.FC<{
   sessions: TrainingSession[];
   title: (s: TrainingSession) => string;
   onOpenSession: (id: string) => void;
-}> = ({ recaps, sessions, title, onOpenSession }) => {
+  achievements: React.ReactNode; // shown beside the timeline on wide windows, below it otherwise
+}> = ({ recaps, sessions, title, onOpenSession, achievements }) => {
   const [playing, setPlaying] = useState<string | null>(null);
   const current = monthKey(Date.now());
   const milestones = sessions.filter(s => s.milestone).sort((a, b) => b.startTime - a.startTime);
 
   if (!recaps.length) {
-    return <p className="text-[13.5px] text-text-muted max-w-[60ch]">After your first session, each month gets a recap here. Mark a session as a milestone in Sessions and it shows up too.</p>;
+    return <div className="space-y-10"><p className="text-[13.5px] text-text-muted max-w-[60ch]">After your first session, each month gets a recap here. Mark a session as a milestone in Sessions and it shows up too.</p><div className="max-w-[860px]">{achievements}</div></div>;
   }
 
   return (
-    <div className="max-w-[860px]">
+    <div className="grid grid-cols-1 2xl:grid-cols-[minmax(0,860px)_26rem] gap-x-16 gap-y-12 items-start">
+    <div>
       {milestones.length === 0 && (
         <p className="mb-8 text-[13px] text-text-muted max-w-[60ch]">Tip: open a session in Sessions and choose “Mark as milestone” to keep moments like your first time in range here.</p>
       )}
@@ -67,6 +69,8 @@ export const Journey: React.FC<{
           </section>
         );
       })}
+    </div>
+    <div>{achievements}</div>
     </div>
   );
 };

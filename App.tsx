@@ -55,7 +55,7 @@ import { version } from './package.json';
 // --- INTERFACE SIZE ---
 // Big windows (a 1440p monitor) get a larger interface; a fixed size in Settings or Ctrl +/− overrides it
 const SIZES = [1, 1.15, 1.3];
-const autoSize = (w: number) => (w >= 3000 ? 1.3 : w >= 2300 ? 1.15 : 1);
+const autoSize = (w: number) => (w >= 3400 ? 1.3 : w >= 3000 ? 1.15 : 1); // 1440p stays at 100%; 4K-class windows scale up
 const useInterfaceSize = (uiScale: AppSettings['uiScale'], set: (s: AppSettings['uiScale']) => void) => {
   const factor = () => (uiScale && uiScale !== 'auto' ? Number(uiScale) : autoSize(window.outerWidth));
   useEffect(() => {
@@ -963,7 +963,7 @@ const App: React.FC = () => {
   };
 
   const consistencySentence = (
-    <p className="text-[15px] leading-relaxed text-text-muted mb-6 max-w-[68ch]">
+    <p className="text-[13.5px] leading-relaxed text-text-muted mb-4 max-w-[68ch]">
       Current streak <Num unit={plural(stats.currentStreak, 'day')}>{stats.currentStreak}</Num>, longest <Num unit={plural(longestStreak, 'day')}>{longestStreak}</Num>.{' '}
       You trained on <Num unit={plural(Object.keys(stats.history).length, 'day')}>{Object.keys(stats.history).length}</Num> for{' '}
       {totalMinutes >= 60 && <><Num unit="h">{Math.floor(totalMinutes / 60)}</Num> </>}<Num unit="min">{totalMinutes % 60}</Num> across{' '}
@@ -977,10 +977,11 @@ const App: React.FC = () => {
 
   const progressTab = PROGRESS_PAGES.some(p => p.id === route.sub) ? route.sub : 'overview';
   const progressTabs: Record<string, React.ReactNode> = {
+    // Wide windows: the trend on the left, everything else stacked in a side column, so it fits one screen
     overview: (
-      <div className="space-y-14">
+      <div className="grid grid-cols-1 2xl:grid-cols-[minmax(0,1fr)_26rem] gap-x-14 gap-y-12 items-start">
         <PitchTrend points={trendPoints} range={settings.targetRange} onSelect={jumpToSession} />
-        <div className="grid grid-cols-1 2xl:grid-cols-2 gap-x-16 gap-y-14 items-start">
+        <div className="space-y-10">
           <section>
             <div className="flex items-baseline justify-between mb-5">
               <h2 className="text-[15px] font-semibold">Your target range</h2>
@@ -1000,10 +1001,8 @@ const App: React.FC = () => {
             <h2 className="text-[15px] font-semibold mb-2">Calendar</h2>
             {consistencySentence}
             <ActivityCalendar minutesByDay={stats.history} restDays={stats.sickDays} trainingDays={settings.trainingDays}
-              onToggleRest={toggleRestDay} onOpenDay={openDay} />
+              onToggleRest={toggleRestDay} onOpenDay={openDay} single={wide} />
           </section>
-        </div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-16 gap-y-10">
           <Goals
             goals={goals}
             stats={stats}
@@ -1012,11 +1011,12 @@ const App: React.FC = () => {
             onClaim={handleClaimGoal}
             onRemoveHistory={handleDeleteHistoryEntry}
           />
-          <Achievements unlockedIds={stats.unlockedAchievements} />
         </div>
       </div>
     ),
-    journey: <Journey recaps={recaps} sessions={sessions} title={titleOf} onOpenSession={jumpToSession} />,
+    journey: <Journey recaps={recaps} sessions={sessions} title={titleOf} onOpenSession={jumpToSession}
+      achievements={<Achievements unlockedIds={stats.unlockedAchievements} />} />,
+
     compare: <CompareRecordings sessions={sessions} range={settings.targetRange} title={titleOf} />,
     sessions: (
       <>

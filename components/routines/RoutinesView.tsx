@@ -7,7 +7,6 @@ import { Popover } from '../Popover';
 import { RoutineEditor } from './RoutineEditor';
 
 const newId = () => crypto.randomUUID();
-const fmt = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 const ORDER = [1, 2, 3, 4, 5, 6, 0]; // Monday first; values are Date.getDay()
 const SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const FULL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -16,7 +15,6 @@ export const daysLabel = (plan: WeekPlan, id: string) => {
   const days = ORDER.filter(d => plan[d] === id);
   return days.length === 7 ? 'Every day' : days.map(d => SHORT[d]).join(', ');
 };
-const OPEN_WEIGHT = 120; // open-ended blocks drawn as 2 min, same as the session progress hairline
 
 interface RoutinePageProps {
   routine: Routine;
@@ -29,7 +27,7 @@ interface RoutinePageProps {
   onStart: (id: string) => void;
 }
 
-// One routine: its editor, and on wide windows a side column showing how a session will run
+// One routine: its editor (duplicate and delete are handled here)
 export const RoutinePage: React.FC<RoutinePageProps> = ({ routine, routines, activeId, plan, onChange, onSetActive, onSelect, onStart }) => {
   const replace = (r: Routine) => onChange(routines.map(x => (x.id === r.id ? r : x)));
   const remove = () => {
@@ -43,11 +41,7 @@ export const RoutinePage: React.FC<RoutinePageProps> = ({ routine, routines, act
     onChange([...routines, c]);
     onSelect(c.id);
   };
-  const weights = routine.blocks.map(b => b.duration || OPEN_WEIGHT);
-  const total = routine.blocks.reduce((a, b) => a + b.duration, 0);
-
   return (
-    <div className="grid grid-cols-1 2xl:grid-cols-[minmax(0,1fr)_22rem] gap-x-16 gap-y-10 items-start">
       <RoutineEditor
         key={routine.id}
         routine={routine}
@@ -58,35 +52,8 @@ export const RoutinePage: React.FC<RoutinePageProps> = ({ routine, routines, act
         onUseOnToday={() => onSetActive(routine.id)}
         onDuplicate={duplicate}
         onDelete={remove}
+        onStart={() => onStart(routine.id)}
       />
-
-      <aside className="hidden 2xl:block sticky top-0">
-        <h2 className="text-[15px] font-semibold">How it runs</h2>
-        <p className="mt-1 text-[13px] text-text-muted">{routineLength(routine)}, one exercise after another.</p>
-        {routine.blocks.length > 0 ? (
-          <>
-            <div className="mt-4 flex gap-[3px]" aria-hidden="true">
-              {routine.blocks.map((b, i) => (
-                <div key={b.id} className={`h-[6px] rounded-full ${b.duration ? 'bg-primary/60' : 'bg-text/20'}`} style={{ flexGrow: weights[i], flexBasis: 0 }} />
-              ))}
-            </div>
-            <ol className="mt-4">
-              {routine.blocks.map((b, i) => (
-                <li key={b.id} className="flex items-baseline gap-3 py-1.5 text-[13px]">
-                  <span className="font-mono tabular-nums text-[12px] text-text-muted w-4 text-right">{i + 1}</span>
-                  <span className="flex-1 truncate">{b.title}</span>
-                  <span className="font-mono tabular-nums text-[12.5px] text-text-muted">{b.duration ? fmt(b.duration) : 'open'}</span>
-                  <span className="w-10 text-right font-mono tabular-nums text-[12px] text-text-muted">{b.duration && total ? `${Math.round((b.duration / total) * 100)}%` : ''}</span>
-                </li>
-              ))}
-            </ol>
-            <Button size="lg" className="mt-6 w-full" onClick={() => onStart(routine.id)}>Start this routine</Button>
-          </>
-        ) : (
-          <p className="mt-4 text-[13px] text-text-muted">Add exercises to see the session take shape.</p>
-        )}
-      </aside>
-    </div>
   );
 };
 

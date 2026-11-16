@@ -1,4 +1,4 @@
-import React, { useLayoutEffect, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import type { PitchRange } from '../../types';
 import { STRAIN_LABELS, trendEnds } from '../../services/pitchStats';
@@ -25,6 +25,8 @@ export const PitchTrend: React.FC<{ points: TrendPoint[]; range: PitchRange; onS
   const wrap = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(800);
   const [hover, setHover] = useState<number | null>(null);
+  const [winH, setWinH] = useState(window.innerHeight);
+  useEffect(() => { const on = () => setWinH(window.innerHeight); window.addEventListener('resize', on); return () => window.removeEventListener('resize', on); }, []);
   const hasPitch = points.some(p => p.median !== null);
   useLayoutEffect(() => {
     const el = wrap.current;
@@ -45,8 +47,8 @@ export const PitchTrend: React.FC<{ points: TrendPoint[]; range: PitchRange; onS
   const rangeEnds = trendEnds(withPitch.map(p => p.inRangePct));
 
   const plotW = Math.max(40, width - PAD_L - 8);
-  // Taller on big screens so the chart keeps a readable aspect instead of a thin strip
-  const PITCH_H = Math.round(Math.min(420, Math.max(190, width * 0.2)));
+  // Grows with the width, but the whole chart stays within ~55% of the window height so the page fits without scrolling
+  const PITCH_H = Math.round(Math.max(170, Math.min(420, width * 0.2, winH * 0.55 - 190)));
   const n = points.length;
   const step = plotW / n;
   const cx = (i: number) => PAD_L + step * (i + 0.5);

@@ -19,9 +19,12 @@ interface RoutineEditorProps {
   onUseOnToday: () => void;
   onDuplicate: () => void;
   onDelete: () => void;
+  onStart: () => void;
 }
 
-export const RoutineEditor: React.FC<RoutineEditorProps> = ({ routine, isActive, days, canDelete, onChange, onUseOnToday, onDuplicate, onDelete }) => {
+export const RoutineEditor: React.FC<RoutineEditorProps> = ({ routine, isActive, days, canDelete, onChange, onUseOnToday, onDuplicate, onDelete, onStart }) => {
+  // One exercise open for editing at a time; the rest are one-line rows so a routine fits on screen
+  const [openId, setOpenId] = useState<string | null>(null);
   const total = routine.blocks.reduce((a, b) => a + b.duration, 0);
   const openCount = routine.blocks.filter(b => b.duration === 0).length;
   const setBlocks = (blocks: ExerciseBlock[]) => onChange({ ...routine, blocks });
@@ -34,12 +37,12 @@ export const RoutineEditor: React.FC<RoutineEditorProps> = ({ routine, isActive,
     [next[i], next[j]] = [next[j], next[i]];
     setBlocks(next);
   };
-  const addBlock = (kind: 'timed' | 'open' | 'rest') => setBlocks([...routine.blocks, {
-    id: crypto.randomUUID(),
+  const addBlock = (kind: 'timed' | 'open' | 'rest') => { const id = crypto.randomUUID(); setOpenId(id); setBlocks([...routine.blocks, {
+    id,
     title: kind === 'open' ? 'Open practice' : kind === 'rest' ? 'Rest' : 'New exercise',
     duration: kind === 'open' ? 0 : kind === 'rest' ? 30 : 60,
     description: '',
-  }]);
+  }]); };
 
   return (
     <div>
@@ -56,6 +59,7 @@ export const RoutineEditor: React.FC<RoutineEditorProps> = ({ routine, isActive,
           {isActive ? <span className="text-[13px] text-primary px-2 mr-1">Runs today</span>
             : <Button size="sm" onClick={onUseOnToday} title="Run this routine today only; your week plan stays the same">Use today</Button>}
           <Button variant="ghost" size="sm" onClick={onDuplicate}>Duplicate</Button>
+          {routine.blocks.length > 0 && <Button variant="secondary" size="sm" onClick={onStart} className="ml-1">Start this routine</Button>}
           {canDelete && (
             <ConfirmButton confirmLabel="Delete routine" message={`Delete “${routine.name}”? Past sessions keep their logs. This can’t be undone.`} onConfirm={onDelete}>
               Delete
@@ -70,7 +74,7 @@ export const RoutineEditor: React.FC<RoutineEditorProps> = ({ routine, isActive,
 
       <Reorder.Group axis="y" values={routine.blocks} onReorder={setBlocks} as="ol">
         {routine.blocks.map((b, i) => (
-          <BlockRow key={b.id} block={b} index={i} onChange={patch => updateBlock(b.id, patch)} onMove={dir => move(i, dir)}
+          <BlockRow key={b.id} block={b} index={i} expanded={openId === b.id} onToggle={() => setOpenId(o => (o === b.id ? null : b.id))} onChange={patch => updateBlock(b.id, patch)} onMove={dir => move(i, dir)}
             onRemove={() => setBlocks(routine.blocks.filter(x => x.id !== b.id))} />
         ))}
       </Reorder.Group>
@@ -84,7 +88,7 @@ export const RoutineEditor: React.FC<RoutineEditorProps> = ({ routine, isActive,
   );
 };
 
-const BlockRow: React.FC<{ block: ExerciseBlock; index: number; onChange: (p: Partial<ExerciseBlock>) => void; onMove: (dir: -1 | 1) => void; onRemove: () => void }> = ({ block, index, onChange, onMove, onRemove }) => {
+const BlockRow: React.FC<{ block: ExerciseBlock; index: number; expanded: boolean; onToggle: () => void; onChange: (p: Partial<ExerciseBlock>) => void; onMove: (dir: -1 | 1) => void; onRemove: () => void }> = ({ block, index, expanded, onToggle, onChange, onMove, onRemove }) => {
   const drag = useDragControls();
   const open = block.duration === 0;
   const [durText, setDurText] = useState(fmt(block.duration));
@@ -106,7 +110,7 @@ const BlockRow: React.FC<{ block: ExerciseBlock; index: number; onChange: (p: Pa
       // Follows the pointer 1:1 while held; only the neighbours tween out of the way
       transition={{ duration: 0.2, ease: [0.65, 0, 0.35, 1] }}
       whileDrag={{ scale: 1.01, boxShadow: 'var(--shadow-pop)' }}
-      className="relative grid grid-cols-[1.5rem_1.5rem_1fr] gap-x-2 py-3 border-b border-border bg-background rounded-lg"
+      className={`relative grid grid-cols-[1.5rem_1.5rem_1fr] gap-x-2 border-b border-border bg-background rounded-lg ${expanded ? 'py-3' : 'py-1'}`}
     >
       <button
         onPointerDown={e => drag.start(e)}
@@ -120,9 +124,18 @@ const BlockRow: React.FC<{ block: ExerciseBlock; index: number; onChange: (p: Pa
       </button>
       <span className="mt-1.5 font-mono tabular-nums text-[12px] text-text-muted text-right">{index + 1}</span>
 
+      {!expanded ? (
+        <button onClick={onToggle} aria-expanded={false} aria-label={`Edit ${block.title || 'exercise'}`}
+          className="min-w-0 flex items-baseline gap-4 rounded-md -mx-2 px-2 py-1.5 text-left hover:bg-text/[0.04] transition-colors">
+          <span className="shrink-0 max-w-[45%] truncate text-[14px] font-medium">{block.title || 'Untitled exercise'}</span>
+          <span className="flex-1 min-w-0 truncate text-[13px] text-text-muted">{block.description.split('\n')[0]}</span>
+          {phrases > 0 && <span className="shrink-0 text-[12.5px] text-text-muted">{phrases} {phrases === 1 ? 'phrase' : 'phrases'}</span>}
+          <span className="shrink-0 w-16 text-right font-mono tabular-nums text-[13px] text-text-muted">{open ? 'open' : fmt(block.duration)}</span>
+        </button>
+      ) : (
       <div className="min-w-0">
         <div className="flex items-center gap-3">
-          <input value={block.title} onChange={e => onChange({ title: e.target.value })} aria-label={`Exercise ${index + 1} title`}
+          <input autoFocus value={block.title} onChange={e => onChange({ title: e.target.value })} aria-label={`Exercise ${index + 1} title`}
             className={`${input} text-[14px] font-medium flex-1 min-w-0`} />
           {open ? (
             <span className="text-[13px] text-text-muted whitespace-nowrap">Open-ended</span>
@@ -146,6 +159,7 @@ const BlockRow: React.FC<{ block: ExerciseBlock; index: number; onChange: (p: Pa
           <ConfirmButton align="start" confirmLabel="Remove" message={`Remove “${block.title}” from this routine?`} onConfirm={onRemove}>
             Remove
           </ConfirmButton>
+          <button onClick={onToggle} aria-expanded className="ml-auto relative before:absolute before:-inset-1.5 before:content-[''] text-[12.5px] text-text hover:text-primary transition-colors">Done</button>
         </div>
         {showPhrases && (
           <textarea value={(block.prompts || []).join('\n')} onChange={e => onChange({ prompts: e.target.value.split('\n') })}
@@ -153,6 +167,7 @@ const BlockRow: React.FC<{ block: ExerciseBlock; index: number; onChange: (p: Pa
             className="mt-2 w-full resize-none [field-sizing:content] min-h-[4rem] rounded-lg border border-border-strong focus:border-primary bg-surface px-3 py-2 text-[13.5px] leading-relaxed outline-none transition-colors placeholder:text-text-muted" />
         )}
       </div>
+      )}
     </Reorder.Item>
   );
 };

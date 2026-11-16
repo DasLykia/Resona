@@ -13,10 +13,11 @@ interface ActivityCalendarProps {
   trainingDays: number[];                   // 0=Sun..6=Sat; empty = every day
   onToggleRest: (day: string) => void;
   onOpenDay: (day: string) => void;
+  single?: boolean; // one month at a time (narrow side column)
 }
 
 // Two months side by side. Trained days are tinted by minutes; empty past days toggle as rest days.
-export const ActivityCalendar: React.FC<ActivityCalendarProps> = ({ minutesByDay, restDays, trainingDays, onToggleRest, onOpenDay }) => {
+export const ActivityCalendar: React.FC<ActivityCalendarProps> = ({ minutesByDay, restDays, trainingDays, onToggleRest, onOpenDay, single }) => {
   const [offset, setOffset] = useState(0); // months back from the current month
   const [dir, setDir] = useState(0);
   const today = new Date(); today.setHours(0, 0, 0, 0);
@@ -76,14 +77,14 @@ export const ActivityCalendar: React.FC<ActivityCalendarProps> = ({ minutesByDay
           <motion.div
             key={offset}
             custom={dir}
-            className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-10"
+            className={single ? 'grid grid-cols-1' : 'grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-10'}
             initial={{ opacity: 0, x: dir * -24 }}
             animate={{ opacity: 1, x: 0, transition: { duration: 0.22, ease: EASE_OUT } }}
             exit={{ opacity: 0, x: dir * 24, transition: { duration: 0.18, ease: EASE_OUT } }}
           >
             {/* Wide windows show a third, older month */}
-            <div className="hidden 2xl:block">{month(offset + 2)}</div>
-            {month(offset + 1)}
+            {!single && <div className="hidden 2xl:block">{month(offset + 2)}</div>}
+            {!single && month(offset + 1)}
             {month(offset)}
           </motion.div>
         </AnimatePresence>
