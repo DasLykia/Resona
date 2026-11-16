@@ -1,96 +1,110 @@
-<h1 align="center">
-  Resona
-</h1>
+# Resona
 
-<h3 align="center">
-🎙️ A professional desktop utility to track your voice training journey. 🎙️
-</h3>
+A Windows app for daily voice training. Resona runs your practice routine, shows your pitch and resonance live while you speak, records the session, and keeps track of how your voice changes over weeks and months.
 
-<p align="center">
-    <a href="https://github.com/DasLykia/Resona/releases/latest"><img alt="Latest Version" src="https://img.shields.io/github/v/release/DasLykia/Resona?color=informational&label=version&sort=semver"></a>
-    <img alt="Platform" src="https://img.shields.io/badge/Platform-Windows-0078D6?logo=windows&logoColor=white"/>
-</p>
+It was made for gender-affirming voice training, in either direction, but works for any voice practice where pitch and consistency matter. Everything stays on your computer: no account, no server, works offline.
 
-## Download & Install
+[![Latest release](https://img.shields.io/github/v/release/DasLykia/Resona?label=release&sort=semver)](https://github.com/DasLykia/Resona/releases/latest)
+![Windows 10 and 11](https://img.shields.io/badge/platform-Windows%2010%20%7C%2011-0078D6)
 
-Grab the latest installer from our releases page. Resona uses **Velopack**, so your app will stay up-to-date automatically!
+## Install
 
-- [**Download Latest Release**](https://github.com/DasLykia/Resona/releases/latest) (_Recommended_)
+Download `Resona-win-Setup.exe` from the [latest release](https://github.com/DasLykia/Resona/releases/latest) and run it. Resona installs for your Windows user only, so no administrator rights are needed.
 
-Just run the `.exe` installer and you are good to go!
+Updates are checked when the app starts (you can turn this off in Settings). When one is available, a button in the sidebar installs it and restarts the app. Your sessions, recordings and settings are kept.
 
----
+## What it does
 
-## What is Resona?
+### Today
 
-Resona is a modern desktop application designed to help **vocalists, voice actors, and public speakers** build a consistent training habit. 
+The start page shows the routine planned for today, its exercises, and the current week. One click starts the session. On rest days you can still train if you want to.
 
-Building a voice requires consistency, but tracking progress can be difficult. Resona solves this by combining:
-- 📅 **Streak Tracking** to keep you motivated.
-- ⏱️ **Session Logging** to track your total practice time.
-- 🎙️ **Audio Recording** to review your progress over time.
-- 🤒 **Sick Day Management** to protect your streak when you need rest.
+### Sessions
 
-Your data is stored locally on your machine, giving you full control over your training logs.
+A session fills the window so nothing else competes for attention:
 
----
+- The current exercise, its instructions and a timer. Timed exercises move on by themselves; open-ended ones wait until you continue.
+- A live pitch graph against your target range (for example 180–220 Hz), not a single note.
+- A resonance meter that shows whether your voice is brighter or darker than usual.
+- Optional phrases to read aloud, which you can cycle through.
+- Pause, skip, and a short beep between exercises.
 
-## Features
+Sessions are recorded if recording is on. Afterwards you get a summary with your time, time in range and the recording, and you can rate how much strain you felt.
 
-### 🔥 Streak System
-**Consistency is Key.** Resona tracks your daily activity automatically. Simply start the timer, do your exercises, and your streak increases. You can customize your schedule (e.g., exclude Sundays) so you don't lose your streak on planned rest days.
+### Routines and the week plan
 
-### 🎙️ Integrated Recording
-**Listen to your Progress.** Don't just log time, log your voice. Resona includes a built-in audio recorder that syncs with your session.
-*   Select your input device & microphone gain.
-*   Auto-saves recordings with the date and session ID.
-*   Review past recordings in the integrated Library.
+Routines are lists of timed exercises, open-ended exercises and rests. Templates for feminization and masculinization are included, and you can write your own, reorder exercises by dragging, and duplicate routines.
 
-### 🤒 Sick Day Recovery
-**Rest is Training.** Vocal health comes first. If you are sick or your voice is strained, you shouldn't be punished for taking a break. Use the **"I was sick"** button to retroactively repair a broken streak.
+The week plan assigns a routine (or a rest day) to each weekday. You can run a different routine for just one day without changing the plan.
 
-### 📊 Statistics & Analytics
-**Visualize your Journey.** Get insights into your training habits with detailed charts and stats:
-*   Total Lifetime Practice Time
-*   Average Session Duration
-*   Calendar Heatmap (Github style)
-*   Session History Logs
+### Progress
 
-### 📝 Training Plan Editor
-**Your Routine, Your Rules.** Keep your exercises right in front of you. Resona features a built-in text editor to write down your warm-ups, scales, and song lists.
+- **Overview:** your median pitch and time in range over time, resonance, a training calendar and your goals.
+- **Then and now:** play an early recording next to a recent one.
+- **Sessions:** every saved session with its pitch data, notes and recording. Search, export or delete them.
+- **Journey:** a recap for each month and milestones you marked yourself.
 
----
+### Rest and vocal health
 
-## Built With
+Rest days and planned days off never break your streak. If you are ill or away, you can mark a whole stretch of days at once. When your strain ratings stay high for a week, Resona suggests a rest day or a shorter session.
 
-Resona is built with modern web technologies wrapped in a high-performance desktop shell:
+### Background and reminders
 
-- [Electron](https://www.electronjs.org/) (App Framework)
-- [React](https://react.dev/) (UI Library)
-- [TypeScript](https://www.typescriptlang.org/) (Logic & Safety)
-- [Velopack](https://velopack.io/) (Installer & Auto-Updates)
-- [Recharts](https://recharts.org/) (Data Visualization)
+All optional and off by default:
 
----
+- **Start with Windows**, hidden in the notification area.
+- **Keep running in the tray** when the window is closed. The window is unloaded while hidden, so Resona uses very little memory.
+- **Training reminder** at a time you choose, only on days your week plan has a routine. It is skipped on rest days and once you have trained.
+
+### Your data
+
+- Export one recording or all of them as WAV files.
+- Back up everything (optionally including recordings) to a single file and restore it on another computer.
+- Deletes ask for confirmation and can be undone for a few seconds afterwards.
+
+Streaks, levels, achievements and unlockable accent colors are there for motivation. Levels can be turned off.
+
+## Privacy
+
+Resona has no account and sends nothing about you anywhere. Sessions, settings and recordings are stored in your Windows user profile (`%APPDATA%\Resona`). The only network request is the update check against this repository's releases, and that can be switched off.
+
+## Versions
+
+Since November 2026, versions are named after their release date: `2026.11.16` is the release from 16 November 2026. Earlier releases used `1.0.x`. Installs from 1.0.5 onwards update automatically.
 
 ## Development
 
-1. **Clone the repo**
-   ```sh
-   git clone https://github.com/DasLykia/Resona.git
-2. **Install dependencies**
-   ```sh
-   npm install
-3. **Run locally**
-   ```sh
-   npm run dev
-   
----
+You need [Node.js](https://nodejs.org/) 20 or newer.
 
-## 🔒 Privacy
-- 📁 Your audio recordings are stored securely on your computer.
-- 📊 Your statistics and settings are stored in your local AppData folder.
-- 🚫 No personal data or audio is ever sent to external servers.
+```sh
+git clone https://github.com/DasLykia/Resona.git
+cd Resona
+npm install
+npm run dev
+```
 
-## 💬 Support
-- If you are having trouble with Resona, have a bug report, or a feature request, please Open an Issue.
+`npm run dev` starts Vite and opens the app in Electron with live reload.
+
+Other scripts:
+
+| Command | What it does |
+| --- | --- |
+| `npm run build` | Builds the interface into `dist/` |
+| `npm run pack:win` | Builds and packages an unpacked app in `Releases/win-unpacked/` |
+| `npm run make:release` | Turns the packaged app into a Velopack release (installer, full and delta packages) in `Releases/` |
+
+Releases need the [Velopack CLI](https://docs.velopack.io/) (`dotnet tool install -g vpk`). Set the date version in `package.json`, run `npm run pack:win` and `npm run make:release`, and upload the files from `Releases/` to a GitHub release with the same tag.
+
+The pure logic in `services/` has small self-tests that run without a test framework:
+
+```sh
+node --experimental-strip-types services/routines.selftest.ts
+```
+
+### Built with
+
+[Electron](https://www.electronjs.org/), [React](https://react.dev/), [TypeScript](https://www.typescriptlang.org/), [Vite](https://vite.dev/), [Tailwind CSS](https://tailwindcss.com/), [Motion](https://motion.dev/), [Pitchy](https://github.com/ianprime0509/pitchy) for pitch detection and [Velopack](https://velopack.io/) for installing and updating.
+
+## Feedback
+
+Found a bug or have an idea? [Open an issue](https://github.com/DasLykia/Resona/issues).
