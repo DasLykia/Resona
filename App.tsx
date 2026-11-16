@@ -12,7 +12,7 @@ import { TitleBar } from './components/shell/TitleBar';
 import { LevelProgressModal } from './components/LevelProgressModal';
 
 import { 
-  AppSettings, AppState, Recording, UserStats, TrainingSession, Goal, 
+  AppSettings, AppState, Recording, Routine, UserStats, TrainingSession, Goal, 
   PitchDataPoint, PitchRange, ColorTheme 
 } from './types';
 import { 
@@ -30,6 +30,7 @@ import { exportName } from './services/wav';
 import { RoutinePage, RoutinePicker, NewRoutineMenu, RoutineList, WeekPlanEditor } from './components/routines/RoutinesView';
 import { RoutineNameTitle } from './components/routines/RoutineEditor';
 import { ThisWeek } from './components/today/ThisWeek';
+import { useWide } from './components/useWide';
 import { PageHint } from './components/PageHint';
 import { Setup, SetupResult } from './components/onboarding/Setup';
 import { SettingsView } from './components/settings/SettingsView';
@@ -50,6 +51,35 @@ import { Journey } from './components/progress/Journey';
 import { monthRecaps } from './services/recap';
 import { medianBrightness } from './services/resonance';
 import { version } from './package.json';
+
+// --- INTERFACE SIZE ---
+// Big windows (a 1440p monitor) get a larger interface; a fixed size in Settings or Ctrl +/− overrides it
+const SIZES = [1, 1.15, 1.3];
+const autoSize = (w: number) => (w >= 3000 ? 1.3 : w >= 2300 ? 1.15 : 1);
+const useInterfaceSize = (uiScale: AppSettings['uiScale'], set: (s: AppSettings['uiScale']) => void) => {
+  const factor = () => (uiScale && uiScale !== 'auto' ? Number(uiScale) : autoSize(window.outerWidth));
+  useEffect(() => {
+    if (!window.resonaWindow) return; // browser preview: no zoom
+    const apply = () => window.resonaWindow!.setZoom(factor());
+    apply();
+    if (uiScale && uiScale !== 'auto') return;
+    window.addEventListener('resize', apply);
+    return () => window.removeEventListener('resize', apply);
+  }, [uiScale]);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey)) return;
+      const i = SIZES.indexOf(factor());
+      if (e.key === '=' || e.key === '+') set(String(SIZES[Math.min(SIZES.length - 1, i < 0 ? 1 : i + 1)]) as AppSettings['uiScale']);
+      else if (e.key === '-') set(String(SIZES[Math.max(0, i < 0 ? 0 : i - 1)]) as AppSettings['uiScale']);
+      else if (e.key === '0') set('auto');
+      else return;
+      e.preventDefault();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [uiScale]);
+};
 
 // --- APPEARANCE ---
 // Sets the colour mode and the two accent source colours; index.css derives every token from them in OKLCH.
@@ -653,6 +683,8 @@ const App: React.FC = () => {
 
   // --- LAYOUT ---
   useAppearance(settings);
+  const wide = useWide();
+  useInterfaceSize(settings.uiScale, (uiScale) => setSettings(s => ({ ...s, uiScale })));
   const inSession = appState !== AppState.IDLE;
   const routineBlocks = activeRoutineOf(settings).blocks;
   const routineIsEmpty = routineBlocks.length === 0;
@@ -788,15 +820,48 @@ const App: React.FC = () => {
     </p>
   );
 
+  // Wide windows only: what today's session will run, so the right half of a big screen isn't empty
+  const fmtLen = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+  const todayExercises = (
+    <section className="hidden 2xl:block">
+      <div className="flex items-baseline justify-between mb-2">
+        <h2 className="text-[15px] font-semibold">Today’s exercises</h2>
+        {!restToday && <button onClick={() => goRoutine()} className="text-[12.5px] text-text-muted hover:text-text transition-colors">Edit routine</button>}
+      </div>
+      {restToday || routineIsEmpty ? (
+        <p className="py-3 border-t border-border text-[13.5px] text-text-muted">{restToday ? 'Nothing planned today.' : 'This routine has no exercises yet.'}</p>
+      ) : (
+        <motion.ol className="border-t border-border" initial="hidden" animate="shown" variants={{ shown: { transition: { staggerChildren: 0.03 } } }}>
+          {routineBlocks.map((b, i) => (
+            <motion.li key={b.id}
+              variants={{ hidden: { opacity: 0, y: 4 }, shown: { opacity: 1, y: 0, transition: { duration: 0.2, ease: EASE_OUT } } }}
+              className="grid grid-cols-[1.75rem_minmax(0,1fr)_auto] items-baseline gap-x-2 py-3 border-b border-border">
+              <span className="font-mono tabular-nums text-[12px] text-text-muted">{i + 1}</span>
+              <span className="min-w-0">
+                <span className="block text-[14px] truncate">{b.title}</span>
+                {b.description && <span className="block mt-0.5 text-[13px] text-text-muted line-clamp-2">{b.description}</span>}
+              </span>
+              <span className="font-mono tabular-nums text-[12.5px] text-text-muted">{b.duration ? fmtLen(b.duration) : 'open'}</span>
+            </motion.li>
+          ))}
+        </motion.ol>
+      )}
+    </section>
+  );
+
+  // One job on the left (start, and how the week is going); on wide windows the exercises sit on the right
   const todayPage = (
     <PageFrame title="Today" center aside={<span className="text-[13px] text-text-muted">{dateLabel}</span>}
       hint={hint('today', 'Start runs the routine shown here; click its name to switch routines. Free session is a stopwatch with live pitch and recording.')}>
-      <div className="space-y-12">
-        {todayStart}
-        {strainNote}
-        {recapNote}
-        <ThisWeek secondsByDay={stats.history} restDays={stats.sickDays} trainingDays={settings.trainingDays}
-          streak={stats.currentStreak} onToggleRest={toggleRestDay} onTimeOff={markTimeOff} />
+      <div className="grid grid-cols-1 2xl:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] gap-x-16 gap-y-12 items-start">
+        <div className="space-y-12">
+          {todayStart}
+          {strainNote}
+          {recapNote}
+          <ThisWeek secondsByDay={stats.history} restDays={stats.sickDays} trainingDays={settings.trainingDays}
+            streak={stats.currentStreak} onToggleRest={toggleRestDay} onTimeOff={markTimeOff} />
+        </div>
+        {todayExercises}
       </div>
     </PageFrame>
   );
@@ -991,13 +1056,12 @@ const App: React.FC = () => {
     </PageFrame>
   );
 
-  // Routines: the list, or one routine's editor with a way back
+  // Routines. Wide windows: week plan on top, list beside the editor. Narrow: the list, or one routine's editor with a way back.
   const shownRoutine = settings.routines.find(r => r.id === route.sub);
-  const routinePage = shownRoutine ? (
-    <PageFrame wide back={{ label: 'Routines', onClick: () => goRoutine('') }}
-      title={<RoutineNameTitle routine={shownRoutine} onRename={(name) => setSettings(s => ({ ...s, routines: s.routines.map(r => r.id === shownRoutine.id ? { ...r, name } : r) }))} />}>
+  const renameRoutine = (id: string) => (name: string) => setSettings(s => ({ ...s, routines: s.routines.map(r => r.id === id ? { ...r, name } : r) }));
+  const routineEditor = (routine: Routine) => (
       <RoutinePage
-        routine={shownRoutine}
+        routine={routine}
         routines={settings.routines}
         activeId={plannedTodayId(settings) ?? ''}
         plan={settings.weekPlan}
@@ -1006,15 +1070,33 @@ const App: React.FC = () => {
         onSelect={(id) => goRoutine(id)}
         onStart={(id) => { pickForToday(id); initiateSession('routine', id); }}
       />
+  );
+  const newRoutineMenu = <NewRoutineMenu onCreate={(r) => { setSettings(s => ({ ...s, routines: [...s.routines, r] })); goRoutine(r.id); }} />;
+  const selectedRoutine = shownRoutine ?? activeRoutineOf(settings);
+  const routinePage = wide ? (
+    <PageFrame title="Routines" wide aside={newRoutineMenu}
+      hint={hint('routines-week', 'Pick a routine for each day in the week plan; Start runs the one for today. Choose a routine on the left to edit its exercises.')}>
+      <WeekPlanEditor plan={settings.weekPlan} routines={settings.routines} onChange={setWeekPlan} />
+      <div className="grid grid-cols-[20rem_minmax(0,1fr)] gap-x-14 items-start">
+        <RoutineList routines={settings.routines} plan={settings.weekPlan} todayId={plannedTodayId(settings)} selectedId={selectedRoutine.id} onOpen={(id) => goRoutine(id)} />
+        <div>
+          <div className="mb-3 text-[22px] font-semibold tracking-[-0.015em]"><RoutineNameTitle routine={selectedRoutine} onRename={renameRoutine(selectedRoutine.id)} /></div>
+          {routineEditor(selectedRoutine)}
+        </div>
+      </div>
+    </PageFrame>
+  ) : shownRoutine ? (
+    <PageFrame wide back={{ label: 'Routines', onClick: () => goRoutine('') }}
+      title={<RoutineNameTitle routine={shownRoutine} onRename={renameRoutine(shownRoutine.id)} />}>
+      {routineEditor(shownRoutine)}
     </PageFrame>
   ) : (
-    <PageFrame title="Routines" aside={<NewRoutineMenu onCreate={(r) => { setSettings(s => ({ ...s, routines: [...s.routines, r] })); goRoutine(r.id); }} />}
+    <PageFrame title="Routines" aside={newRoutineMenu}
       hint={hint('routines-week', 'Pick a routine for each day in the week plan; Start runs the one for today. Click a routine below to edit its exercises.')}>
       <WeekPlanEditor plan={settings.weekPlan} routines={settings.routines} onChange={setWeekPlan} />
       <RoutineList routines={settings.routines} plan={settings.weekPlan} todayId={plannedTodayId(settings)} onOpen={(id) => goRoutine(id)} />
     </PageFrame>
   );
-
   const settingsPage = (
     <PageFrame title="Settings" narrow hint={hint('settings', 'Changes apply right away. There is nothing to save.')}>
       <SettingsView settings={settings} update={(patch) => setSettings(s => ({ ...s, ...patch }))} stats={stats}
@@ -1097,7 +1179,7 @@ const App: React.FC = () => {
         <main className="flex-1 min-w-0 relative bg-background rounded-tl-[10px] border-l border-t border-border overflow-clip">
           <AnimatePresence initial={false}>
             <motion.div
-              key={route.section === 'routines' ? `routines/${route.sub}` : route.section}
+              key={route.section === 'routines' && !wide ? `routines/${route.sub}` : route.section}
               className="absolute inset-0 overflow-y-auto"
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0, transition: { duration: 0.2, ease: EASE_OUT } }}
@@ -1172,7 +1254,7 @@ const PageFrame: React.FC<{
   hint?: { show: boolean; onDismiss: () => void; text: string };
   back?: { label: string; onClick: () => void };
 }> = ({ title, aside, wide, narrow, center, children, hint, back }) => (
-  <div className={`px-10 2xl:px-14 pt-7 pb-16 ${center ? 'max-w-[980px] mx-auto' : wide ? 'max-w-[2200px]' : narrow ? 'max-w-[760px]' : 'max-w-[1000px]'}`}>
+  <div className={`px-10 2xl:px-14 pt-7 pb-16 ${center ? 'max-w-[980px] 2xl:max-w-[1480px] mx-auto' : wide ? 'max-w-[2200px]' : narrow ? 'max-w-[760px]' : 'max-w-[1000px]'}`}>
     {back && (
       <button onClick={back.onClick} className="-mt-2 mb-2 -ml-1 px-1 inline-flex items-center gap-1 rounded-md text-[13px] text-text-muted hover:text-text hover:bg-text/[0.05] transition-colors">
         <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M6.5 2l-3 3 3 3" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>

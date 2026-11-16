@@ -69,6 +69,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ settings, update, st
   return (
     <div>
       <Group id="appearance" title="Appearance">
+        <Row label="Interface size" hint={window.resonaWindow ? 'Auto makes everything larger on big windows. Ctrl + and Ctrl − change it, Ctrl 0 goes back to Auto.' : 'Only works in the installed app.'}>
+          <Segmented label="Interface size" value={settings.uiScale ?? 'auto'} onChange={uiScale => update({ uiScale })}
+            options={[{ value: 'auto', label: 'Auto' }, { value: '1', label: '100%' }, { value: '1.15', label: '115%' }, { value: '1.3', label: '130%' }]} />
+        </Row>
         <Row label="Color mode" hint="System follows your Windows light or dark setting.">
           <Segmented label="Color mode" value={settings.theme} onChange={theme => update({ theme })}
             options={[{ value: 'system', label: 'System' }, { value: 'light', label: 'Light' }, { value: 'dark', label: 'Dark' }]} />

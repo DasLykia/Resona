@@ -21,10 +21,11 @@ const store = new Store();
 let win;
 
 const TITLEBAR_HEIGHT = 36;
+let zoom = 1; // interface size; the native caption buttons scale with the page's title bar
 const overlayFor = (dark) => ({
   color: "#00000000",
   symbolColor: dark ? "#f2f2f2" : "#1c1c1c",
-  height: TITLEBAR_HEIGHT,
+  height: Math.round(TITLEBAR_HEIGHT * zoom),
 });
 
 function createWindow() {
@@ -105,6 +106,14 @@ ipcMain.handle("velopack:apply-update", async (event, updateInfo) => {
 // 'system' | 'light' | 'dark'. Drives Mica's tint and prefers-color-scheme in the page.
 ipcMain.on("window:set-theme", (event, source) => {
   if (["system", "light", "dark"].includes(source)) nativeTheme.themeSource = source;
+});
+
+// Interface size (Settings › Appearance, Ctrl +/−). Page zoom keeps layout and popover maths consistent.
+ipcMain.on("window:set-zoom", (event, factor) => {
+  if (typeof factor !== "number" || !(factor >= 0.8 && factor <= 1.6) || !win || win.isDestroyed()) return;
+  zoom = factor;
+  win.webContents.setZoomFactor(factor);
+  win.setTitleBarOverlay(overlayFor(nativeTheme.shouldUseDarkColors));
 });
 
 nativeTheme.on("updated", () => {

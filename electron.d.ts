@@ -13,7 +13,7 @@ declare global {
   interface Window {
     velopackApi: IVelopackAPI;
     // Only present inside Electron
-    resonaWindow?: { setTheme: (source: 'system' | 'light' | 'dark') => void };
+    resonaWindow?: { setTheme: (source: 'system' | 'light' | 'dark') => void; setZoom: (factor: number) => void };
     resonaFiles?: { chooseExportFolder: () => Promise<string | null>; writeExport: (name: string, data: ArrayBuffer) => Promise<void> };
   }
 }

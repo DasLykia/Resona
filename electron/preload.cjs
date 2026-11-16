@@ -10,6 +10,7 @@ contextBridge.exposeInMainWorld("velopackApi", {
 
 contextBridge.exposeInMainWorld("resonaWindow", {
     setTheme: (source) => ipcRenderer.send("window:set-theme", source),
+    setZoom: (factor) => ipcRenderer.send("window:set-zoom", factor),
 });
 
 contextBridge.exposeInMainWorld("resonaFiles", {

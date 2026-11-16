@@ -91,7 +91,29 @@ export const RoutinePage: React.FC<RoutinePageProps> = ({ routine, routines, act
 };
 
 // The Routines page: every routine as one row; click to edit
-export const RoutineList: React.FC<{ routines: Routine[]; plan: WeekPlan; todayId: string | null; onOpen: (id: string) => void }> = ({ routines, plan, todayId, onOpen }) => (
+// selectedId: wide layout, where the list is a narrow column beside the editor (details go on a second line)
+export const RoutineList: React.FC<{ routines: Routine[]; plan: WeekPlan; todayId: string | null; onOpen: (id: string) => void; selectedId?: string }> = ({ routines, plan, todayId, onOpen, selectedId }) => selectedId !== undefined ? (
+  <ul className="border-t border-border" aria-label="Routines">
+    {routines.map(r => {
+      const on = r.id === selectedId;
+      return (
+        <li key={r.id}>
+          <button onClick={() => onOpen(r.id)} aria-current={on ? 'true' : undefined}
+            className={`relative w-full text-left px-3 py-3 border-b border-border transition-colors ${on ? 'bg-text/[0.06]' : 'hover:bg-text/[0.03]'}`}>
+            {on && <span className="absolute left-0 top-1/2 -mt-3 h-6 w-[3px] rounded-full bg-primary" />}
+            <span className="flex items-baseline gap-3">
+              <span className="flex-1 min-w-0 truncate text-[14px] font-medium">{r.name || 'Untitled routine'}</span>
+              {r.id === todayId && <span className="text-[12.5px] text-primary">Today</span>}
+            </span>
+            <span className="block mt-0.5 text-[12.5px] text-text-muted truncate">
+              {daysLabel(plan, r.id) || 'Not planned'} · {r.blocks.length ? routineLength(r) : 'No exercises'}
+            </span>
+          </button>
+        </li>
+      );
+    })}
+  </ul>
+) : (
   <ul className="border-t border-border">
     {routines.map(r => (
       <li key={r.id}>

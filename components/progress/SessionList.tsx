@@ -9,6 +9,7 @@ import { ExportButton } from '../ExportButton';
 import { exportName } from '../../services/wav';
 import { IconChevronRight } from '../icons';
 import { PitchTrace } from './PitchTrace';
+import { useWide } from '../useWide';
 
 const PAGE = 25;
 const EASE_OUT = [0.23, 1, 0.32, 1] as const;
@@ -194,19 +195,6 @@ export const SessionList: React.FC<SessionListProps> = ({ sessions, range, title
     )}
     </div>
   );
-};
-
-// Tailwind's 2xl breakpoint as a live flag, so layout and behaviour switch together
-const useWide = () => {
-  const q = '(min-width: 1536px)';
-  const [wide, setWide] = useState(() => window.matchMedia(q).matches);
-  useEffect(() => {
-    const m = window.matchMedia(q);
-    const on = (e: MediaQueryListEvent) => setWide(e.matches);
-    m.addEventListener('change', on);
-    return () => m.removeEventListener('change', on);
-  }, []);
-  return wide;
 };
 
 const SessionDetail: React.FC<{

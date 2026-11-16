@@ -95,6 +95,7 @@ export interface AppSettings {
   weekPlan: (string | null)[]; // routine per weekday, index = Date.getDay(), null = rest. Training days are derived from it.
   todayOverride?: { date: string; routineId: string }; // "just today" pick from Today
   seenRecap?: string; // "2026-10": last month whose recap nudge was opened or dismissed on Today
+  uiScale?: 'auto' | '1' | '1.15' | '1.3'; // interface size; auto picks from the window width
 
   // First-launch setup and page hints
   setupDone?: boolean;
