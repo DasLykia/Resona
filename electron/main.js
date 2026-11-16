@@ -2,6 +2,7 @@ import { VelopackApp, UpdateManager } from 'velopack';
 import { app, BrowserWindow, dialog, ipcMain, Menu, nativeTheme, Notification, Tray } from "electron";
 import fs from "fs/promises";
 import path from "path";
+import { spawnSync } from "child_process";
 import { fileURLToPath } from "url";
 import Store from "electron-store";
 
@@ -9,7 +10,16 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // --- VELOPACK SETUP ---
-VelopackApp.build().run();
+// Start with Windows lives in the registry under this name; uninstalling removes it so Windows doesn't try to start a deleted exe.
+// Electron isn't ready inside the hook, so reg.exe deletes it directly (both keys Electron writes); missing values are fine.
+const LOGIN_NAME = "Resona";
+VelopackApp.build()
+  .onBeforeUninstallFastCallback(() => {
+    for (const key of ["Run", "Explorer\\StartupApproved\\Run"]) {
+      spawnSync("reg", ["delete", `HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\${key}`, "/v", LOGIN_NAME, "/f"], { windowsHide: true });
+    }
+  })
+  .run();
 
 // Production URL (Specific to 1.0.2)
 const updateUrl = 'https://github.com/DasLykia/Resona/releases/latest/download';
@@ -190,7 +200,7 @@ function applyTray() {
 function applyLogin() {
   if (!app.isPackaged) return; // dev runs would register electron.exe
   // Velopack keeps the exe at ...\Resona\current\Resona.exe, so this path survives updates
-  app.setLoginItemSettings({ openAtLogin: !!bg.openAtLogin, args: ["--hidden"] });
+  app.setLoginItemSettings({ openAtLogin: !!bg.openAtLogin, args: ["--hidden"], name: LOGIN_NAME });
 }
 
 const dayKey = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
