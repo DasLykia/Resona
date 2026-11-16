@@ -4,6 +4,8 @@ import type { PitchDataPoint, PitchRange, Routine } from '../../types';
 import { Button } from '../Button';
 import { LivePitch } from './LivePitch';
 import { RangeEditor } from './RangeEditor';
+import { BrightnessMeter } from './BrightnessMeter';
+import { resonanceGoal } from '../../services/resonance';
 import { IconChevronLeft, IconChevronRight, IconNext, IconPause, IconPlay, IconPrev } from '../icons';
 
 const EASE_OUT = [0.23, 1, 0.32, 1] as const;
@@ -25,6 +27,7 @@ interface FocusSessionProps {
   onEnd: () => void;
   focus: string;
   onFocusChange: (text: string) => void;
+  usualBrightness: number | null; // median of recent sessions, for the meter's reference line
 }
 
 // The user's standing reminder, one quiet line above the exercise; click to edit it in place
@@ -52,7 +55,7 @@ const FocusNote: React.FC<{ text: string; onChange: (t: string) => void }> = ({ 
   );
 };
 
-export const FocusSession: React.FC<FocusSessionProps> = ({ kind, routine, beepVolume, dataRef, range, onRangeChange, onPauseChange, onEnd, focus, onFocusChange }) => {
+export const FocusSession: React.FC<FocusSessionProps> = ({ kind, routine, beepVolume, dataRef, range, onRangeChange, onPauseChange, onEnd, focus, onFocusChange, usualBrightness }) => {
   const blocks = routine.blocks;
   const isRoutine = kind === 'routine' && blocks.length > 0;
   const [index, setIndex] = useState(0);
@@ -181,7 +184,9 @@ export const FocusSession: React.FC<FocusSessionProps> = ({ kind, routine, beepV
           </div>
         )}
 
-        <div className="flex-1 min-h-[220px] mt-8">
+        <div className="mt-8 shrink-0"><BrightnessMeter dataRef={dataRef} goal={resonanceGoal(range)} usual={usualBrightness} /></div>
+
+        <div className="flex-1 min-h-[220px] mt-4">
           <LivePitch dataRef={dataRef} range={range} aside={<RangeEditor range={range} onChange={onRangeChange} />} />
         </div>
       </div>

@@ -31,6 +31,8 @@ export const Journey: React.FC<{
       {recaps.map(r => {
         const inMonth = milestones.filter(s => monthKey(s.startTime) === r.month);
         const diff = r.startMedian !== null && r.endMedian !== null ? r.endMedian - r.startMedian : null;
+        // Small changes in the estimate are noise; only call a direction past ~3%
+        const bChange = r.startBrightness && r.endBrightness ? r.endBrightness / r.startBrightness - 1 : null;
         return (
           <section key={r.month} className="grid grid-cols-1 md:grid-cols-[11rem_minmax(0,1fr)] gap-x-10 gap-y-2 py-6 border-t border-border">
             <h2 className="text-[15px] font-semibold">
@@ -42,6 +44,7 @@ export const Journey: React.FC<{
                   ? <>You trained on <N>{r.daysTrained}</N> {r.daysTrained === 1 ? 'day' : 'days'} for {hm(r.minutes)}, across <N>{r.sessions}</N> {r.sessions === 1 ? 'session' : 'sessions'}.</>
                   : 'No training this month.'}
                 {diff !== null && <>{' '}Your median pitch went from <N>{r.startMedian}</N> Hz to <N>{r.endMedian}</N> Hz{diff !== 0 && <> (<N>{diff > 0 ? '+' : '−'}{Math.abs(diff)}</N> Hz)</>}.</>}
+                {bChange !== null && <>{' '}Resonance {Math.abs(bChange) < 0.03 ? 'stayed about the same' : bChange > 0 ? 'got brighter' : 'got darker'} (<N>{r.startBrightness}</N> to <N>{r.endBrightness}</N> Hz).</>}
               </p>
               {inMonth.length > 0 && (
                 <ul className="mt-4 border-t border-border">

@@ -48,6 +48,7 @@ import { OtherRecordings } from './components/progress/OtherRecordings';
 import { Goals, Achievements } from './components/progress/GoalsAndAchievements';
 import { Journey } from './components/progress/Journey';
 import { monthRecaps } from './services/recap';
+import { medianBrightness } from './services/resonance';
 import { version } from './package.json';
 
 // --- APPEARANCE ---
@@ -265,7 +266,8 @@ const App: React.FC = () => {
             // Active time (pauses excluded) so pitch data lines up with the paused recording
             const time = Date.now() - startTimeRef.current - pausedTotalRef.current;
             // The live view reads this ref directly; no React state per sample
-            pitchDataRef.current.push({ time, pitch: p });
+            const brightness = p > 0 ? audioService.getBrightness(p) : null;
+            pitchDataRef.current.push(brightness ? { time, pitch: p, brightness } : { time, pitch: p });
         }, 50);
 
         setAppState(AppState.TRAINING);
@@ -665,6 +667,11 @@ const App: React.FC = () => {
       .map(s => ({ id: s.id, stats: computePitchStats(s.pitchData, s.targetRange ?? settings.targetRange) }))
       .filter(x => x.stats.median !== null), [sessions, settings.targetRange]);
   const latest = recentMedians[0];
+  // Your usual resonance: the middle of your last 10 sessions that measured it
+  const usualBrightness = useMemo(() => {
+      const xs = sessions.map(s => medianBrightness(s.pitchData)).filter((b): b is number => b !== null).slice(0, 10).sort((a, b) => a - b);
+      return xs.length ? xs[Math.floor(xs.length / 2)] : null;
+  }, [sessions]);
 
   const finishSetup = (r: SetupResult) => {
       audioService.close();
@@ -829,6 +836,7 @@ const App: React.FC = () => {
             onEnd={finishWorkout}
             focus={settings.sessionFocus}
             onFocusChange={(sessionFocus) => setSettings(s => ({ ...s, sessionFocus }))}
+            usualBrightness={usualBrightness}
           />
         )}
         {appState === AppState.POST_SESSION && lastSession && lastResult && (
@@ -866,7 +874,7 @@ const App: React.FC = () => {
   const trendPoints: TrendPoint[] = useMemo(() => {
       const live: TrendPoint[] = sessions.map(s => {
           const st = computePitchStats(s.pitchData, s.targetRange ?? settings.targetRange);
-          return { id: s.id, date: s.startTime, median: st.median, inRangePct: st.inRangePct, strain: sessionStrain(s) };
+          return { id: s.id, date: s.startTime, median: st.median, inRangePct: st.inRangePct, strain: sessionStrain(s), brightness: medianBrightness(s.pitchData) };
       });
       // "Persist Analytics": strain from deleted sessions lives on in stats.healthTrends (keyed by end time)
       const ends = new Set(sessions.map(s => s.endTime));
@@ -899,7 +907,7 @@ const App: React.FC = () => {
   );
 
   const recaps = useMemo(() => monthRecaps(
-      sessions.map(s => ({ startTime: s.startTime, median: computePitchStats(s.pitchData, s.targetRange ?? settings.targetRange).median })),
+      sessions.map(s => ({ startTime: s.startTime, median: computePitchStats(s.pitchData, s.targetRange ?? settings.targetRange).median, brightness: medianBrightness(s.pitchData) })),
       stats.history), [sessions, stats.history, settings.targetRange]);
 
   const progressTab = PROGRESS_PAGES.some(p => p.id === route.sub) ? route.sub : 'overview';

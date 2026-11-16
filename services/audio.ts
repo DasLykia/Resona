@@ -1,5 +1,6 @@
 
 import { PitchDetector } from "pitchy";
+import { spectralCentroid } from "./resonance";
 
 export class AudioService {
   private audioContext: AudioContext | null = null;
@@ -13,6 +14,7 @@ export class AudioService {
   // Pitchy specific properties
   private pitchDetector: PitchDetector<Float32Array> | null = null;
   private inputBuffer: Float32Array | null = null;
+  private freqBuffer: Float32Array | null = null;
 
   async initialize(deviceId?: string): Promise<void> {
     // Force close previous context to ensure clean state for device switch
@@ -47,6 +49,7 @@ export class AudioService {
       
       // Initialize Pitchy Detector
       this.inputBuffer = new Float32Array(this.analyserNode.fftSize);
+      this.freqBuffer = new Float32Array(this.analyserNode.frequencyBinCount);
       this.pitchDetector = PitchDetector.forFloat32Array(this.analyserNode.fftSize);
 
       // Always try to resume context immediately after user interaction led here
@@ -113,6 +116,13 @@ export class AudioService {
     if (pitch < 50 || pitch > 3000) return -1;
 
     return pitch;
+  }
+
+  // Resonance estimate for the current frame; call only with a detected pitch
+  getBrightness(f0: number): number | null {
+    if (!this.analyserNode || !this.audioContext || !this.freqBuffer) return null;
+    this.analyserNode.getFloatFrequencyData(this.freqBuffer);
+    return spectralCentroid(this.freqBuffer, this.audioContext.sampleRate / this.analyserNode.fftSize, f0);
   }
 
   startRecording() {
@@ -183,6 +193,7 @@ export class AudioService {
     this.mediaRecorder = null;
     this.pitchDetector = null;
     this.inputBuffer = null;
+    this.freqBuffer = null;
   }
 
   static async getDevices(): Promise<MediaDeviceInfo[]> {

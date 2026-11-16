@@ -7,6 +7,7 @@ export interface PitchRange {
 export interface PitchDataPoint {
   time: number;
   pitch: number;
+  brightness?: number; // spectral centroid in Hz above the fundamental (resonance estimate); voiced samples only
 }
 
 export interface ExerciseBlock {

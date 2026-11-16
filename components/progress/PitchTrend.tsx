@@ -10,11 +10,12 @@ export interface TrendPoint {
   median: number | null;
   inRangePct: number;
   strain: number | null; // 1..5
+  brightness?: number | null; // median resonance estimate, Hz; null before it was measured
   kept?: boolean;        // session deleted; only its strain survives (Persist Analytics)
 }
 
 const PAD_L = 72;
-const RANGE_H = 44, STRAIN_H = 18, GAP = 14;
+const RANGE_H = 44, BRIGHT_H = 36, STRAIN_H = 18, GAP = 14;
 
 const EASE_OUT = [0.23, 1, 0.32, 1] as const;
 const fmtDate = (t: number) => new Date(t).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
@@ -51,7 +52,13 @@ export const PitchTrend: React.FC<{ points: TrendPoint[]; range: PitchRange; onS
   const cx = (i: number) => PAD_L + step * (i + 0.5);
   const lo = Math.min(range.low, ...medians) / 1.15, hi = Math.max(range.high, ...medians) * 1.15;
   const y = (hz: number) => 8 + (PITCH_H - 16) * (1 - (Math.log(hz) - Math.log(lo)) / (Math.log(hi) - Math.log(lo)));
-  const rangeTop = PITCH_H + GAP, strainTop = rangeTop + RANGE_H + GAP, total = strainTop + STRAIN_H + 22;
+  // Brightness row only once some session measured it; its own scale (min..max of your sessions)
+  const brights = points.map(p => p.brightness).filter((b): b is number => !!b);
+  const hasBright = brights.length > 0;
+  const bLo = Math.min(...brights) * 0.97, bHi = Math.max(...brights) * 1.03;
+  const rangeTop = PITCH_H + GAP, brightTop = rangeTop + RANGE_H + GAP;
+  const strainTop = hasBright ? brightTop + BRIGHT_H + GAP : brightTop, total = strainTop + STRAIN_H + 22;
+  const by = (hz: number) => brightTop + 4 + (BRIGHT_H - 8) * (1 - (hz - bLo) / (bHi - bLo || 1));
   const barW = Math.max(2, Math.min(14, step * 0.6));
 
   // Line through sessions that had pitch, in order
@@ -102,6 +109,15 @@ export const PitchTrend: React.FC<{ points: TrendPoint[]; range: PitchRange; onS
               rx={1} className={hover === i ? 'fill-primary' : 'fill-primary/55'} />
           ))}
 
+          {/* brightness: higher dot = brighter resonance */}
+          {hasBright && <>
+            <text x={PAD_L - 10} y={brightTop + BRIGHT_H / 2} textAnchor="end" dominantBaseline="middle" className="fill-text-muted text-[12px]">Brightness</text>
+            <line x1={PAD_L} x2={PAD_L + plotW} y1={brightTop + BRIGHT_H + 0.5} y2={brightTop + BRIGHT_H + 0.5} className="stroke-border" />
+            {points.map((p, i) => p.brightness ? (
+              <circle key={p.id} cx={cx(i)} cy={by(p.brightness)} r={hover === i ? 4 : 3} className={hover === i ? 'fill-text' : 'fill-text/55'} />
+            ) : null)}
+          </>}
+
           {/* strain */}
           <text x={PAD_L - 10} y={strainTop + STRAIN_H / 2} textAnchor="end" dominantBaseline="middle" className="fill-text-muted text-[12px]">Strain</text>
           {points.map((p, i) => p.strain !== null && (
@@ -139,6 +155,7 @@ export const PitchTrend: React.FC<{ points: TrendPoint[]; range: PitchRange; onS
               <div className="text-text-muted mt-0.5">
                 {h.median !== null ? <>Median <span className="font-mono tabular-nums text-text">{h.median}</span>{' '}Hz · <span className="font-mono tabular-nums text-text">{h.inRangePct}%</span> in range</> : h.kept ? 'Session deleted, strain kept' : 'No pitch picked up'}
               </div>
+              {h.brightness ? <div className="text-text-muted">Brightness <span className="font-mono tabular-nums text-text">{h.brightness}</span>{' '}Hz</div> : null}
               {h.strain !== null && <div className="text-text-muted">Strain: <span className="text-text">{STRAIN_LABELS[h.strain - 1]}</span></div>}
             </motion.div>
           )}
