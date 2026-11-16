@@ -527,6 +527,19 @@ const App: React.FC = () => {
       });
   };
 
+  // A stretch of days off (ill, travelling): every day without training becomes a rest day
+  const markTimeOff = (from: string, to: string) => {
+      setStats(prev => {
+          const sickDays = { ...prev.sickDays };
+          const [y, m, d] = from.split('-').map(Number);
+          for (let day = new Date(y, m - 1, d), k = from; k <= to; day.setDate(day.getDate() + 1), k = getLocalISODate(day)) {
+              if (!prev.history[k]) sickDays[k] = true;
+          }
+          return { ...prev, sickDays };
+      });
+      setStatusMessage('Time off marked as rest days');
+  };
+
   // Delete Session
   const handleDeleteSession = async (id: string) => {
     const session = sessions.find(s => s.id === id);
@@ -689,12 +702,14 @@ const App: React.FC = () => {
   const dismissHint = (k: string) => setSettings(s => ({ ...s, dismissedHints: [...(s.dismissedHints || []), k] }));
   const hint = (k: string, text: string) => ({ show: showHint(k), onDismiss: () => dismissHint(k), text });
 
-  const restToday = plannedTodayId(settings) === null && !trainAnyway;
+  // Rest today: nothing planned, or the day is marked as time off
+  const markedOffToday = !!stats.sickDays[getLocalISODate()];
+  const restToday = (plannedTodayId(settings) === null || markedOffToday) && !trainAnyway;
   const todayStart = restToday ? (
     <div className="flex items-center justify-between gap-6 py-5 border-y border-border">
       <div className="min-w-0 flex-1">
-        <div className="text-[17px] font-semibold tracking-[-0.01em]">Rest day</div>
-        <div className="text-[13px] text-text-muted mt-0.5">Nothing is planned today, and resting never breaks your streak.</div>
+        <div className="text-[17px] font-semibold tracking-[-0.01em]">{markedOffToday ? 'Time off' : 'Rest day'}</div>
+        <div className="text-[13px] text-text-muted mt-0.5">{markedOffToday ? 'Today is marked as a rest day, so your streak waits for you.' : 'Nothing is planned today, and resting never breaks your streak.'}</div>
       </div>
       <Button variant="ghost" onClick={() => setTrainAnyway(true)}>Train anyway</Button>
     </div>
@@ -741,7 +756,7 @@ const App: React.FC = () => {
       <div className="space-y-12">
         {todayStart}
         <ThisWeek secondsByDay={stats.history} restDays={stats.sickDays} trainingDays={settings.trainingDays}
-          streak={stats.currentStreak} onToggleRest={toggleRestDay} />
+          streak={stats.currentStreak} onToggleRest={toggleRestDay} onTimeOff={markTimeOff} />
       </div>
     </PageFrame>
   );

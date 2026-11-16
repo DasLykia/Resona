@@ -43,17 +43,16 @@ export const ActivityCalendar: React.FC<ActivityCalendarProps> = ({ minutesByDay
             const scheduled = trainingDays.length === 0 || trainingDays.includes(d.getDay());
             const tint = secs >= 1200 ? 'bg-primary text-on-primary' : secs >= 600 ? 'bg-primary/60 text-text' : secs > 0 ? 'bg-primary/25 text-text' : '';
             const title = secs > 0 ? `${Math.round(secs / 60)} min trained. Open sessions`
-              : future ? '' : rest ? 'Rest day. Click to unmark' : 'Click to mark as a rest day';
+              : rest ? 'Rest day. Click to unmark' : future ? 'Click to plan a rest day' : 'Click to mark as a rest day';
             return (
               <button
                 key={k}
-                disabled={future}
                 title={title}
                 aria-label={`${d.toDateString()}${secs ? `, ${Math.round(secs / 60)} minutes` : rest ? ', rest day' : ''}`}
-                aria-pressed={!secs && !future ? rest : undefined}
+                aria-pressed={!secs ? rest : undefined}
                 onClick={() => (secs ? onOpenDay(k) : onToggleRest(k))}
                 className={`relative h-9 rounded-lg text-[12.5px] font-mono tabular-nums transition-[background-color,color,transform] duration-150 active:scale-[0.97]
-                  ${tint || (future ? 'text-text-muted/50' : scheduled ? 'text-text hover:bg-text/[0.06]' : 'text-text-muted hover:bg-text/[0.06]')}
+                  ${tint || (future ? 'text-text-muted/50 hover:text-text-muted hover:bg-text/[0.06]' : scheduled ? 'text-text hover:bg-text/[0.06]' : 'text-text-muted hover:bg-text/[0.06]')}
                   ${rest && !secs ? 'outline outline-1 outline-dashed outline-text/40 -outline-offset-4' : ''}
                   ${k === todayKey ? 'font-semibold underline underline-offset-4 decoration-2 decoration-primary' : ''}`}
               >
