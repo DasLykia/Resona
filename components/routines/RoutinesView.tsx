@@ -27,7 +27,7 @@ export const RoutinePage: React.FC<RoutinePageProps> = ({ routine, routines, act
     const rest = routines.filter(r => r.id !== routine.id);
     onChange(rest);
     if (routine.id === activeId) onSetActive(rest[0].id);
-    onSelect(rest[0].id);
+    onSelect(''); // back to the list
   };
   const duplicate = () => {
     const c = copyRoutine(routine, `${routine.name} copy`, newId);
@@ -80,7 +80,23 @@ export const RoutinePage: React.FC<RoutinePageProps> = ({ routine, routines, act
   );
 };
 
-// Sidebar item under Routines that opens the template choice
+// The Routines page: every routine as one row; click to edit
+export const RoutineList: React.FC<{ routines: Routine[]; activeId: string; onOpen: (id: string) => void }> = ({ routines, activeId, onOpen }) => (
+  <ul className="border-t border-border">
+    {routines.map(r => (
+      <li key={r.id}>
+        <button onClick={() => onOpen(r.id)}
+          className="w-full flex items-baseline gap-4 px-3 -mx-3 py-3.5 border-b border-border text-left rounded-none hover:bg-text/[0.03] transition-colors">
+          <span className="flex-1 min-w-0 truncate text-[14px] font-medium">{r.name || 'Untitled routine'}</span>
+          {r.id === activeId && <span className="text-[13px] text-primary">Used on Today</span>}
+          <span className="w-28 text-right text-[13px] text-text-muted">{r.blocks.length ? routineLength(r) : 'No exercises'}</span>
+        </button>
+      </li>
+    ))}
+  </ul>
+);
+
+// Opens the template choice for a new routine
 export const NewRoutineMenu: React.FC<{ onCreate: (r: Routine) => void }> = ({ onCreate }) => {
   const trigger = useRef<HTMLButtonElement>(null);
   const [open, setOpen] = useState(false);
@@ -88,11 +104,8 @@ export const NewRoutineMenu: React.FC<{ onCreate: (r: Routine) => void }> = ({ o
   const item = 'w-full text-left px-3 py-2 rounded-lg hover:bg-text/[0.06] transition-colors';
   return (
     <>
-      <button ref={trigger} onClick={() => setOpen(o => !o)} aria-expanded={open}
-        className="relative w-full h-8 pl-7 pr-3 flex items-center text-left text-[13px] rounded-lg text-text-muted hover:text-text hover:bg-text/[0.045] transition-[background-color,color,transform] duration-150 active:scale-[0.97]">
-        New routine
-      </button>
-      <Popover open={open} onClose={() => setOpen(false)} anchor={trigger} align="start" label="New routine">
+      <Button ref={trigger} variant="secondary" onClick={() => setOpen(o => !o)} aria-expanded={open}>New routine</Button>
+      <Popover open={open} onClose={() => setOpen(false)} anchor={trigger} align="end" label="New routine">
         <div className="w-72 -m-2">
           <button className={item} onClick={() => pick({ id: newId(), name: 'New routine', blocks: [] })}>
             <span className="block text-[13.5px]">Blank routine</span>

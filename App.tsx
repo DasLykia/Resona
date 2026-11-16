@@ -25,12 +25,12 @@ import {
 import { audioService, AudioService } from './services/audio';
 import { calculateStreaks } from './services/stats';
 import { migrateRoutines, routineLength, copyRoutine } from './services/routines';
-import { RoutinePage, RoutinePicker, NewRoutineMenu } from './components/routines/RoutinesView';
+import { RoutinePage, RoutinePicker, NewRoutineMenu, RoutineList } from './components/routines/RoutinesView';
 import { RoutineNameTitle } from './components/routines/RoutineEditor';
 import { ThisWeek } from './components/today/ThisWeek';
 import { PageHint } from './components/PageHint';
 import { Setup, SetupResult } from './components/onboarding/Setup';
-import { SettingsView, SettingsPageId } from './components/settings/SettingsView';
+import { SettingsView } from './components/settings/SettingsView';
 import { CommandMenu, Command, matches } from './components/CommandMenu';
 import { computePitchStats, rangeAround, rangeCenter, strainFromEffort } from './services/pitchStats';
 import { RangeBand } from './components/session/RangeBand';
@@ -83,52 +83,6 @@ const getLocalISODate = (d: Date = new Date()) => {
   const month = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
-};
-
-// --- Focus Block Component ---
-const SessionFocusBlock: React.FC<{ focusText: string; onUpdate: (text: string) => void; isReadOnly?: boolean; compact?: boolean }> = ({ focusText, onUpdate, isReadOnly, compact }) => {
-    const [isEditing, setIsEditing] = useState(false);
-    const [tempText, setTempText] = useState(focusText);
-
-    const handleSave = () => {
-        onUpdate(tempText);
-        setIsEditing(false);
-    };
-
-    return (
-        <section className="w-full">
-            <div className="flex items-baseline justify-between mb-1.5">
-                <h2 className="text-[13px] font-semibold text-text">Focus</h2>
-                {!isEditing && !isReadOnly && (
-                    <button
-                        onClick={() => { setTempText(focusText); setIsEditing(true); }}
-                        className="text-[12.5px] text-text-muted hover:text-text transition-colors"
-                    >
-                        Edit
-                    </button>
-                )}
-            </div>
-
-            {isEditing ? (
-                <div className="flex flex-col gap-2 w-full">
-                    <textarea
-                        className="w-full min-h-[6rem] bg-surface rounded-lg px-3 py-2 text-[13.5px] leading-relaxed text-text outline-none resize-y border border-border-strong focus:border-primary transition-colors"
-                        value={tempText}
-                        onChange={(e) => setTempText(e.target.value)}
-                        autoFocus
-                    />
-                    <div className="flex justify-end gap-2">
-                        <Button size="sm" variant="ghost" onClick={() => setIsEditing(false)}>Cancel</Button>
-                        <Button size="sm" onClick={handleSave}>Save</Button>
-                    </div>
-                </div>
-            ) : (
-                <p className={`text-[13.5px] text-text-muted leading-relaxed whitespace-pre-wrap overflow-y-auto ${compact ? 'max-h-24' : 'max-h-40'}`}>
-                    {focusText || "Write down what to keep in mind while you train."}
-                </p>
-            )}
-        </section>
-    );
 };
 
 // --- MAIN APP ---
@@ -627,12 +581,6 @@ const App: React.FC = () => {
     setSessions(prev => prev.filter(s => !ids.includes(s.id)));
   };
 
-  const formatTime = (seconds: number) => {
-    const m = Math.floor(seconds / 60);
-    const s = seconds % 60;
-    return `${m}:${s.toString().padStart(2, '0')}`;
-  };
-
   // The button already says "Install and restart", so no second confirmation
   const installUpdate = async (update: UpdateInfo | null = updateAvailable) => {
       if (!update || !window.velopackApi) return;
@@ -697,9 +645,12 @@ const App: React.FC = () => {
       setHighlight(null);
   };
   const goRoutine = (id = activeRoutineOf(settings).id) => navigate({ section: 'routines', sub: id });
+  // Settings is one page; the command menu's Settings entries scroll to their heading
+  useEffect(() => {
+      if (route.section === 'settings' && route.sub) document.getElementById(`settings-${route.sub}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [route]);
 
   // One-line explanations, shown until dismissed (Settings › Appearance can bring them back)
-  const hintKey = (r: Route) => (r.section === 'progress' ? `progress/${r.sub}` : r.section);
   const showHint = (k: string) => !(settings.dismissedHints || []).includes(k);
   const dismissHint = (k: string) => setSettings(s => ({ ...s, dismissedHints: [...(s.dismissedHints || []), k] }));
   const hint = (k: string, text: string) => ({ show: showHint(k), onDismiss: () => dismissHint(k), text });
@@ -708,7 +659,7 @@ const App: React.FC = () => {
     <div className="flex items-center justify-between gap-6 py-5 border-y border-border">
       <div className="min-w-0 flex-1">
         <RoutinePicker routines={settings.routines} activeId={activeRoutineOf(settings).id}
-          onPick={(id) => setSettings(s => ({ ...s, activeRoutineId: id }))} onEdit={() => goRoutine()} />
+          onPick={(id) => setSettings(s => ({ ...s, activeRoutineId: id }))} onEdit={() => navigate({ section: 'routines', sub: '' })} />
         <div className="text-[13px] text-text-muted mt-0.5">
           {routineIsEmpty
             ? <>No exercises yet. <button onClick={() => goRoutine()} className="underline decoration-border-strong underline-offset-[3px] hover:text-text transition-colors">Add exercises</button></>
@@ -740,40 +691,14 @@ const App: React.FC = () => {
     </section>
   );
 
-  const todayRoutine = routineBlocks.length > 0 && (
-    <section>
-      <h2 className="text-[15px] font-semibold mb-2">Today’s routine</h2>
-      <motion.ol initial="hidden" animate="shown" variants={{ shown: { transition: { staggerChildren: 0.03 } } }}>
-        {routineBlocks.map((b, i) => (
-          <motion.li
-            key={b.id}
-            variants={{ hidden: { opacity: 0, y: 4 }, shown: { opacity: 1, y: 0, transition: { duration: 0.2, ease: EASE_OUT } } }}
-            className="grid grid-cols-[1.75rem_1fr_auto] items-baseline gap-2 py-2.5 border-b border-border text-[13.5px]"
-          >
-            <span className="font-mono tabular-nums text-[12px] text-text-muted">{i + 1}</span>
-            <span className="truncate">{b.title}</span>
-            <span className="font-mono tabular-nums text-[12.5px] text-text-muted">{b.duration === 0 ? 'open' : formatTime(b.duration)}</span>
-          </motion.li>
-        ))}
-      </motion.ol>
-    </section>
-  );
-
-  // Wide windows: start + routine on the left; this week, your voice and focus on the right
+  // One job: start today's session; the week underneath shows how it's going. Centered, calm on wide screens.
   const todayPage = (
-    <PageFrame title="Today" wide aside={<span className="text-[13px] text-text-muted">{dateLabel}</span>}
-      hint={hint('today', 'Start runs the routine shown here; Free session is a stopwatch with live pitch and recording. Your voice shows your target range and where your recent sessions landed.')}>
-      <div className="grid grid-cols-1 2xl:grid-cols-[minmax(0,1fr)_minmax(0,0.9fr)] gap-x-16 gap-y-10 items-start">
-        <div className="space-y-10">
-          {todayStart}
-          {todayRoutine}
-        </div>
-        <div className="space-y-10">
-          <ThisWeek secondsByDay={stats.history} restDays={stats.sickDays} trainingDays={settings.trainingDays}
-            streak={stats.currentStreak} onToggleRest={toggleRestDay} />
-          {todayVoice}
-          <SessionFocusBlock focusText={settings.sessionFocus} onUpdate={(txt) => setSettings(s => ({...s, sessionFocus: txt}))} />
-        </div>
+    <PageFrame title="Today" center aside={<span className="text-[13px] text-text-muted">{dateLabel}</span>}
+      hint={hint('today', 'Start runs the routine shown here; click its name to switch routines. Free session is a stopwatch with live pitch and recording.')}>
+      <div className="space-y-12">
+        {todayStart}
+        <ThisWeek secondsByDay={stats.history} restDays={stats.sickDays} trainingDays={settings.trainingDays}
+          streak={stats.currentStreak} onToggleRest={toggleRestDay} />
       </div>
     </PageFrame>
   );
@@ -811,6 +736,8 @@ const App: React.FC = () => {
             onRangeChange={setRange}
             onPauseChange={setPaused}
             onEnd={finishWorkout}
+            focus={settings.sessionFocus}
+            onFocusChange={(sessionFocus) => setSettings(s => ({ ...s, sessionFocus }))}
           />
         )}
         {appState === AppState.POST_SESSION && lastSession && lastResult && (
@@ -880,26 +807,50 @@ const App: React.FC = () => {
     </p>
   );
 
-  const progressPages: Record<string, React.ReactNode> = {
+  const progressTab = PROGRESS_PAGES.some(p => p.id === route.sub) ? route.sub : 'overview';
+  const progressTabs: Record<string, React.ReactNode> = {
     overview: (
-      <PageFrame title="Is your voice changing?" wide hint={hint('progress/overview', 'Each column is one session: its median pitch against your target range, how much of it was in range, and how strained your voice felt. Click a column to open that session.')}>
+      <div className="space-y-14">
         <PitchTrend points={trendPoints} range={settings.targetRange} onSelect={jumpToSession} />
-      </PageFrame>
+        <div className="grid grid-cols-1 2xl:grid-cols-2 gap-x-16 gap-y-14 items-start">
+          <section>
+            <div className="flex items-baseline justify-between mb-5">
+              <h2 className="text-[15px] font-semibold">Your target range</h2>
+              <RangeEditor range={settings.targetRange} onChange={setRange} />
+            </div>
+            <RangeBand
+              range={settings.targetRange}
+              markers={recentMedians.map((m, i) => ({ hz: m.stats.median!, current: i === 0, label: i === 0 ? String(m.stats.median) : undefined })).reverse()}
+            />
+            <p className="mt-3 text-[13px] text-text-muted">
+              {latest
+                ? <>Last session: median <span className="font-mono tabular-nums text-text">{latest.stats.median}</span>{' '}Hz, <span className="font-mono tabular-nums text-text">{latest.stats.inRangePct}%</span> in range.{recentMedians.length > 1 && ' Grey marks are the sessions before.'}</>
+                : 'After your first session, your median pitch shows on this scale.'}
+            </p>
+          </section>
+          <section>
+            <h2 className="text-[15px] font-semibold mb-2">Calendar</h2>
+            {consistencySentence}
+            <ActivityCalendar minutesByDay={stats.history} restDays={stats.sickDays} trainingDays={settings.trainingDays}
+              onToggleRest={toggleRestDay} onOpenDay={openDay} />
+          </section>
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-16 gap-y-10">
+          <Goals
+            goals={goals}
+            stats={stats}
+            onAdd={g => setGoals(p => [...p, g])}
+            onRemove={id => setGoals(p => p.filter(g => g.id !== id))}
+            onClaim={handleClaimGoal}
+            onRemoveHistory={handleDeleteHistoryEntry}
+          />
+          <Achievements unlockedIds={stats.unlockedAchievements} />
+        </div>
+      </div>
     ),
-    compare: (
-      <PageFrame title="Then and now" wide hint={hint('progress/compare', 'Pick an early and a recent recording, then switch between Then and Now while it plays. You hear the same moment in both.')}>
-        <CompareRecordings sessions={sessions} range={settings.targetRange} title={titleOf} />
-      </PageFrame>
-    ),
-    calendar: (
-      <PageFrame title="Calendar" wide hint={hint('progress/calendar', 'Tinted days are days you trained. Click an empty past day to mark it as a rest day, or a trained day to open its session.')}>
-        {consistencySentence}
-        <ActivityCalendar minutesByDay={stats.history} restDays={stats.sickDays} trainingDays={settings.trainingDays}
-          onToggleRest={toggleRestDay} onOpenDay={openDay} />
-      </PageFrame>
-    ),
+    compare: <CompareRecordings sessions={sessions} range={settings.targetRange} title={titleOf} />,
     sessions: (
-      <PageFrame title="Sessions" wide hint={hint('progress/sessions', 'Every saved session with its recording, pitch and note. Search by date, routine or note.')}>
+      <>
         <SessionList
           sessions={sessions}
           range={settings.targetRange}
@@ -918,28 +869,28 @@ const App: React.FC = () => {
             <OtherRecordings recordings={otherRecordings} onDelete={handleDeleteRecording} />
           </div>
         )}
-      </PageFrame>
-    ),
-    goals: (
-      <PageFrame title="Goals and achievements" wide hint={hint('progress/goals', 'Goals count from the day you add them. Achievements unlock on their own as you train.')}>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-16 gap-y-10 max-w-[1400px]">
-          <Goals
-            goals={goals}
-            stats={stats}
-            onAdd={g => setGoals(p => [...p, g])}
-            onRemove={id => setGoals(p => p.filter(g => g.id !== id))}
-            onClaim={handleClaimGoal}
-            onRemoveHistory={handleDeleteHistoryEntry}
-          />
-          <Achievements unlockedIds={stats.unlockedAchievements} />
-        </div>
-      </PageFrame>
+      </>
     ),
   };
+  const progressPage = (
+    <PageFrame title="Progress" wide hint={hint('progress', 'Overview shows your pitch over time, your calendar and goals. Then and now plays an early recording against a recent one. Sessions lists everything you saved.')}>
+      <PageTabs tabs={PROGRESS_PAGES} value={progressTab} onChange={(sub) => navigate({ section: 'progress', sub })} />
+      <AnimatePresence mode="popLayout" initial={false}>
+        <motion.div key={progressTab}
+          initial={{ opacity: 0, y: 4 }}
+          animate={{ opacity: 1, y: 0, transition: { duration: 0.2, ease: EASE_OUT } }}
+          exit={{ opacity: 0, transition: { duration: 0.16, ease: EASE_OUT } }}>
+          {progressTabs[progressTab]}
+        </motion.div>
+      </AnimatePresence>
+    </PageFrame>
+  );
 
-  const shownRoutine = settings.routines.find(r => r.id === route.sub) ?? activeRoutineOf(settings);
-  const routinePage = (
-    <PageFrame wide title={<RoutineNameTitle routine={shownRoutine} onRename={(name) => setSettings(s => ({ ...s, routines: s.routines.map(r => r.id === shownRoutine.id ? { ...r, name } : r) }))} />} hint={hint('routines', 'Edit the exercises here. Drag the handle or use the arrow keys to reorder. Use on Today makes Start run this routine.')}>
+  // Routines: the list, or one routine's editor with a way back
+  const shownRoutine = settings.routines.find(r => r.id === route.sub);
+  const routinePage = shownRoutine ? (
+    <PageFrame wide back={{ label: 'Routines', onClick: () => goRoutine('') }}
+      title={<RoutineNameTitle routine={shownRoutine} onRename={(name) => setSettings(s => ({ ...s, routines: s.routines.map(r => r.id === shownRoutine.id ? { ...r, name } : r) }))} />}>
       <RoutinePage
         routine={shownRoutine}
         routines={settings.routines}
@@ -950,12 +901,16 @@ const App: React.FC = () => {
         onStart={(id) => { setSettings(s => ({ ...s, activeRoutineId: id })); initiateSession('routine'); }}
       />
     </PageFrame>
+  ) : (
+    <PageFrame title="Routines" aside={<NewRoutineMenu onCreate={(r) => { setSettings(s => ({ ...s, routines: [...s.routines, r] })); goRoutine(r.id); }} />}
+      hint={hint('routines', 'Click a routine to edit its exercises. The one marked Used on Today is what Start runs.')}>
+      <RoutineList routines={settings.routines} activeId={activeRoutineOf(settings).id} onOpen={(id) => goRoutine(id)} />
+    </PageFrame>
   );
 
-  const settingsPageId = (SETTINGS_PAGES.some(p => p.id === route.sub) ? route.sub : 'appearance') as SettingsPageId;
   const settingsPage = (
-    <PageFrame title={SETTINGS_PAGES.find(p => p.id === settingsPageId)!.label} narrow hint={hint('settings', 'Changes apply right away. There is nothing to save.')}>
-      <SettingsView page={settingsPageId} settings={settings} update={(patch) => setSettings(s => ({ ...s, ...patch }))} stats={stats}
+    <PageFrame title="Settings" narrow hint={hint('settings', 'Changes apply right away. There is nothing to save.')}>
+      <SettingsView settings={settings} update={(patch) => setSettings(s => ({ ...s, ...patch }))} stats={stats}
         appVersion={appVersion} onReset={handleResetApp} onInstallUpdate={installUpdate}
         onShowHintsAgain={() => { setSettings(s => ({ ...s, dismissedHints: [] })); setStatusMessage('Page hints will show again'); }} />
     </PageFrame>
@@ -963,7 +918,7 @@ const App: React.FC = () => {
 
   const currentPage =
     route.section === 'today' ? todayPage
-    : route.section === 'progress' ? (progressPages[route.sub] ?? progressPages.overview)
+    : route.section === 'progress' ? progressPage
     : route.section === 'routines' ? routinePage
     : settingsPage;
 
@@ -1017,9 +972,6 @@ const App: React.FC = () => {
         <Sidebar
           route={route}
           onNavigate={navigate}
-          routines={settings.routines}
-          activeRoutineId={activeRoutineOf(settings).id}
-          newRoutine={<NewRoutineMenu onCreate={(r) => { setSettings(s => ({ ...s, routines: [...s.routines, r] })); goRoutine(r.id); }} />}
           disabled={inSession}
           streak={stats.currentStreak}
           level={stats.level}
@@ -1036,7 +988,7 @@ const App: React.FC = () => {
         <main className="flex-1 min-w-0 relative bg-background rounded-tl-[10px] border-l border-t border-border overflow-clip">
           <AnimatePresence initial={false}>
             <motion.div
-              key={`${route.section}/${route.sub}`}
+              key={route.section === 'routines' ? `routines/${route.sub}` : route.section}
               className="absolute inset-0 overflow-y-auto"
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0, transition: { duration: 0.2, ease: EASE_OUT } }}
@@ -1104,16 +1056,37 @@ const MIN_SAVED_SECONDS = 30; // shorter sessions are treated as accidental unti
 // Left-anchored next to the nav like Windows Settings. `wide` pages grow into columns on big screens
 // (up to 2200px); settings stay a readable 760px. The hint is the page's one-line first-visit explanation.
 const PageFrame: React.FC<{
-  title: React.ReactNode; aside?: React.ReactNode; wide?: boolean; narrow?: boolean; children: React.ReactNode;
+  title: React.ReactNode; aside?: React.ReactNode; wide?: boolean; narrow?: boolean; center?: boolean; children: React.ReactNode;
   hint?: { show: boolean; onDismiss: () => void; text: string };
-}> = ({ title, aside, wide, narrow, children, hint }) => (
-  <div className={`px-10 2xl:px-14 pt-7 pb-16 ${wide ? 'max-w-[2200px]' : narrow ? 'max-w-[760px]' : 'max-w-[1000px]'}`}>
+  back?: { label: string; onClick: () => void };
+}> = ({ title, aside, wide, narrow, center, children, hint, back }) => (
+  <div className={`px-10 2xl:px-14 pt-7 pb-16 ${center ? 'max-w-[980px] mx-auto' : wide ? 'max-w-[2200px]' : narrow ? 'max-w-[760px]' : 'max-w-[1000px]'}`}>
+    {back && (
+      <button onClick={back.onClick} className="-mt-2 mb-2 -ml-1 px-1 inline-flex items-center gap-1 rounded-md text-[13px] text-text-muted hover:text-text hover:bg-text/[0.05] transition-colors">
+        <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M6.5 2l-3 3 3 3" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+        {back.label}
+      </button>
+    )}
     <header className="flex items-end justify-between gap-6 mb-7 min-h-9">
       <h1 className="flex-1 min-w-0 text-[26px] font-semibold tracking-[-0.02em] leading-none">{title}</h1>
       {aside}
     </header>
     {hint && <PageHint show={hint.show} onDismiss={hint.onDismiss}>{hint.text}</PageHint>}
     {children}
+  </div>
+);
+
+// Tabs inside a page: text labels on a hairline, the underline slides between them
+const PageTabs: React.FC<{ tabs: readonly { id: string; label: string }[]; value: string; onChange: (id: string) => void }> = ({ tabs, value, onChange }) => (
+  <div role="tablist" className="-mt-2 mb-8 flex gap-6 border-b border-border">
+    {tabs.map(t => (
+      <button key={t.id} role="tab" aria-selected={t.id === value} onClick={() => onChange(t.id)}
+        className={`relative pb-2.5 text-[13.5px] transition-colors ${t.id === value ? 'text-text font-medium' : 'text-text-muted hover:text-text'}`}>
+        {t.label}
+        {t.id === value && <motion.span layoutId="page-tab" className="absolute left-0 right-0 -bottom-px h-[2px] rounded-full bg-primary"
+          transition={{ duration: 0.22, ease: [0.65, 0, 0.35, 1] }} />}
+      </button>
+    ))}
   </div>
 );
 

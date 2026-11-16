@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { AnimatePresence, motion } from 'motion/react';
+import { motion } from 'motion/react';
 import { IconSearch } from '../icons';
 
 export type Section = 'today' | 'progress' | 'routines' | 'settings';
@@ -8,9 +8,7 @@ export interface Route { section: Section; sub: string }
 export const PROGRESS_PAGES = [
   { id: 'overview', label: 'Overview' },
   { id: 'compare', label: 'Then and now' },
-  { id: 'calendar', label: 'Calendar' },
   { id: 'sessions', label: 'Sessions' },
-  { id: 'goals', label: 'Goals and achievements' },
 ] as const;
 
 export const SETTINGS_PAGES = [
@@ -22,14 +20,10 @@ export const SETTINGS_PAGES = [
 ] as const;
 
 const EASE_IN_OUT = [0.65, 0, 0.35, 1] as const;
-const EASE_OUT = [0.23, 1, 0.32, 1] as const;
 
 interface SidebarProps {
   route: Route;
   onNavigate: (route: Route) => void;
-  routines: { id: string; name: string }[];
-  activeRoutineId: string;
-  newRoutine: React.ReactNode; // the "New routine" trigger (owns its popover)
   disabled?: boolean;
   streak: number;
   level: number;
@@ -53,47 +47,28 @@ const Indicator: React.FC<{ animate: boolean }> = ({ animate }) => (
   />
 );
 
-const Item: React.FC<{ label: React.ReactNode; selected: boolean; open?: boolean; sub?: boolean; onClick: () => void; animate: boolean; title?: string }> = ({ label, selected, open, sub, onClick, animate, title }) => (
+const Item: React.FC<{ label: string; selected: boolean; onClick: () => void; animate: boolean }> = ({ label, selected, onClick, animate }) => (
   <button
     onClick={onClick}
-    title={title}
     aria-current={selected ? 'page' : undefined}
-    aria-expanded={open}
-    className={`relative w-full flex items-center text-left rounded-lg transition-[background-color,color,transform] duration-150 ease-out active:scale-[0.97] active:duration-75
-      ${sub ? 'h-8 pl-7 pr-3 text-[13px]' : 'h-9 pl-4 pr-3 text-[13.5px]'}
-      ${selected ? 'bg-text/[0.07] text-text font-medium' : open ? 'text-text font-medium hover:bg-text/[0.045]' : 'text-text-muted hover:text-text hover:bg-text/[0.045]'}`}
+    className={`relative w-full h-9 pl-4 pr-3 flex items-center text-left text-[13.5px] rounded-lg transition-[background-color,color,transform] duration-150 ease-out active:scale-[0.97] active:duration-75
+      ${selected ? 'bg-text/[0.07] text-text font-medium' : 'text-text-muted hover:text-text hover:bg-text/[0.045]'}`}
   >
     {selected && <Indicator animate={animate} />}
     {label}
   </button>
 );
 
-// Children of the open section; height animates so the list below moves instead of jumping
-const Children: React.FC<{ open: boolean; children: React.ReactNode }> = ({ open, children }) => (
-  <AnimatePresence initial={false}>
-    {open && (
-      <motion.div
-        className="overflow-hidden"
-        initial={{ height: 0, opacity: 0 }}
-        animate={{ height: 'auto', opacity: 1, transition: { height: { duration: 0.22, ease: EASE_IN_OUT }, opacity: { duration: 0.18, ease: EASE_OUT } } }}
-        exit={{ height: 0, opacity: 0, transition: { height: { duration: 0.18, ease: EASE_IN_OUT }, opacity: { duration: 0.12 } } }}
-      >
-        <div className="py-0.5 space-y-0.5">{children}</div>
-      </motion.div>
-    )}
-  </AnimatePresence>
-);
-
 export const Sidebar: React.FC<SidebarProps> = ({
-  route, onNavigate, routines, activeRoutineId, newRoutine, disabled, streak, level, levelProgress, showLevel, xpMultiplier,
+  route, onNavigate, disabled, streak, level, levelProgress, showLevel, xpMultiplier,
   onOpenLevel, updateVersion, onUpdate, onOpenCommands,
 }) => {
   // Skip the stretch on first paint; only real moves animate
   const mounted = useRef(false);
   useEffect(() => { mounted.current = true; }, []);
   const a = mounted.current;
-  const is = (section: Section, sub = '') => route.section === section && route.sub === sub;
-  const go = (section: Section, sub = '') => onNavigate({ section, sub });
+  const item = (section: Section, label: string) =>
+    <Item label={label} selected={route.section === section} onClick={() => onNavigate({ section, sub: '' })} animate={a} />;
 
   return (
     <nav
@@ -109,25 +84,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
       </button>
 
       <div className="space-y-0.5">
-        <Item label="Today" selected={is('today')} onClick={() => go('today')} animate={a} />
-
-        <Item label="Progress" selected={false} open={route.section === 'progress'} onClick={() => go('progress', 'overview')} animate={a} />
-        <Children open={route.section === 'progress'}>
-          {PROGRESS_PAGES.map(p => <Item key={p.id} sub label={p.label} selected={is('progress', p.id)} onClick={() => go('progress', p.id)} animate={a} />)}
-        </Children>
-
-        <Item label="Routines" selected={false} open={route.section === 'routines'} onClick={() => go('routines', activeRoutineId)} animate={a} />
-        <Children open={route.section === 'routines'}>
-          {routines.map(r => (
-            <Item key={r.id} sub selected={is('routines', r.id)} onClick={() => go('routines', r.id)} animate={a}
-              title={r.id === activeRoutineId ? `${r.name} (used on Today)` : r.name}
-              label={<>
-                <span className="truncate">{r.name || 'Untitled routine'}</span>
-                {r.id === activeRoutineId && <span aria-label="used on Today" className="ml-2 w-1.5 h-1.5 rounded-full bg-primary shrink-0" />}
-              </>} />
-          ))}
-          {newRoutine}
-        </Children>
+        {item('today', 'Today')}
+        {item('progress', 'Progress')}
+        {item('routines', 'Routines')}
       </div>
 
       <div className="flex-1 min-h-6" />
@@ -169,11 +128,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
         )}
       </button>
 
-      <div className="mt-1 pt-1 border-t border-border mx-1 space-y-0.5">
-        <Item label="Settings" selected={false} open={route.section === 'settings'} onClick={() => go('settings', 'appearance')} animate={a} />
-        <Children open={route.section === 'settings'}>
-          {SETTINGS_PAGES.map(p => <Item key={p.id} sub label={p.label} selected={is('settings', p.id)} onClick={() => go('settings', p.id)} animate={a} />)}
-        </Children>
+      <div className="mt-1 pt-1 border-t border-border mx-1">
+        {item('settings', 'Settings')}
       </div>
     </nav>
   );

@@ -13,15 +13,13 @@ const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const FULL_DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 const DAY_INDEX = [1, 2, 3, 4, 5, 6, 0]; // Monday first; stored as JS getDay() (0 = Sunday)
 
-// Each settings page shows one group; the page title names it, so only extra groups (Reset) get a heading
-const Group: React.FC<{ title?: string; show: boolean; children: React.ReactNode }> = ({ title, show, children }) => show ? (
-  <section className="mt-10 first:mt-0">
-    {title && <h2 className="text-[15px] font-semibold mb-2">{title}</h2>}
+// One scrolling page; each group has a heading the command menu can jump to
+const Group: React.FC<{ id?: string; title: string; children: React.ReactNode }> = ({ id, title, children }) => (
+  <section id={id ? `settings-${id}` : undefined} className="mt-10 first:mt-0 scroll-mt-6">
+    <h2 className="text-[15px] font-semibold mb-2">{title}</h2>
     <div className="border-t border-border">{children}</div>
   </section>
-) : null;
-
-export type SettingsPageId = 'appearance' | 'training' | 'microphone' | 'data' | 'updates';
+);
 
 // One setting: what it is on the left, its control on the right
 const Row: React.FC<{ label: string; hint?: React.ReactNode; children: React.ReactNode; htmlFor?: string }> = ({ label, hint, children, htmlFor }) => (
@@ -48,11 +46,10 @@ interface SettingsViewProps {
   appVersion: string;
   onReset: () => void;
   onInstallUpdate: (u: UpdateInfo) => void;
-  page: SettingsPageId;
   onShowHintsAgain: () => void;
 }
 
-export const SettingsView: React.FC<SettingsViewProps> = ({ settings, update, stats, appVersion, onReset, onInstallUpdate, page, onShowHintsAgain }) => {
+export const SettingsView: React.FC<SettingsViewProps> = ({ settings, update, stats, appVersion, onReset, onInstallUpdate, onShowHintsAgain }) => {
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
   useEffect(() => { AudioService.getDevices().then(setDevices).catch(() => setDevices([])); }, []);
 
@@ -61,7 +58,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ settings, update, st
 
   return (
     <div>
-      <Group show={page === 'appearance'}>
+      <Group id="appearance" title="Appearance">
         <Row label="Color mode" hint="System follows your Windows light or dark setting.">
           <Segmented label="Color mode" value={settings.theme} onChange={theme => update({ theme })}
             options={[{ value: 'system', label: 'System' }, { value: 'light', label: 'Light' }, { value: 'dark', label: 'Dark' }]} />
@@ -100,7 +97,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ settings, update, st
         </Row>
       </Group>
 
-      <Group show={page === 'training'}>
+      <Group id="training" title="Training">
         <Row label="Training days" hint="Days you don’t train on, and rest days, never break your streak. With no days picked, every day counts.">
           <TrainingDaysPicker days={settings.trainingDays} onChange={trainingDays => update({ trainingDays })} />
         </Row>
@@ -113,7 +110,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ settings, update, st
         </Row>
       </Group>
 
-      <Group show={page === 'microphone'}>
+      <Group id="microphone" title="Microphone">
         <Row label="Input device" htmlFor="mic">
           <select id="mic" value={settings.inputDeviceId} onChange={e => update({ inputDeviceId: e.target.value })}
             className="h-8 w-64 rounded-lg border border-border-strong bg-surface px-2.5 text-[13px] outline-none focus:border-primary transition-colors">
@@ -131,7 +128,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ settings, update, st
         </Row>
       </Group>
 
-      <Group show={page === 'data'}>
+      <Group id="data" title="Progress and data">
         <Row label="Unlock all rewards" hint="All accent colors right away, but you stop earning XP and levels while this is on.">
           <LevelingSwitch settings={settings} stats={stats} update={update} />
         </Row>
@@ -143,14 +140,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ settings, update, st
         </Row>
       </Group>
 
-      <Group show={page === 'updates'}>
+      <Group id="updates" title="Updates">
         <Row label="Check for updates when Resona starts">
           <Switch label="Check for updates when Resona starts" checked={settings.checkUpdatesOnStartup} onChange={v => update({ checkUpdatesOnStartup: v })} />
         </Row>
         <UpdateRow appVersion={appVersion} onInstall={onInstallUpdate} />
       </Group>
 
-      <Group title="Reset" show={page === 'data'}>
+      <Group title="Reset">
         <Row label="Delete all data" hint="Removes every session, recording, goal and setting from this computer.">
           <ConfirmButton variant="danger" confirmLabel="Delete everything"
             message="Delete all sessions, recordings, goals and settings? Resona restarts empty. This can’t be undone."

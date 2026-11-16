@@ -23,9 +23,36 @@ interface FocusSessionProps {
   onRangeChange: (r: PitchRange) => void;
   onPauseChange: (paused: boolean) => void;
   onEnd: () => void;
+  focus: string;
+  onFocusChange: (text: string) => void;
 }
 
-export const FocusSession: React.FC<FocusSessionProps> = ({ kind, routine, beepVolume, dataRef, range, onRangeChange, onPauseChange, onEnd }) => {
+// The user's standing reminder, one quiet line above the exercise; click to edit it in place
+const FocusNote: React.FC<{ text: string; onChange: (t: string) => void }> = ({ text, onChange }) => {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(text);
+  if (editing) {
+    const save = () => { onChange(draft.trim()); setEditing(false); };
+    return (
+      <div className="flex items-start gap-2 max-w-[80ch]">
+        <textarea autoFocus value={draft} onChange={e => setDraft(e.target.value)} aria-label="Your focus for sessions"
+          onKeyDown={e => { if (e.key === 'Escape') setEditing(false); if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) save(); }}
+          className="flex-1 resize-none [field-sizing:content] min-h-[2.25rem] rounded-lg border border-border-strong focus:border-primary bg-surface px-3 py-1.5 text-[13.5px] leading-relaxed outline-none transition-colors" />
+        <Button size="sm" variant="ghost" onClick={() => setEditing(false)}>Cancel</Button>
+        <Button size="sm" onClick={save}>Save</Button>
+      </div>
+    );
+  }
+  return (
+    <button onClick={() => { setDraft(text); setEditing(true); }} title="Edit your focus"
+      className="flex items-baseline gap-2 max-w-[80ch] text-left text-[13px] rounded-md -mx-1 px-1 hover:bg-text/[0.05] transition-colors">
+      <span className="shrink-0 font-medium text-text">Focus</span>
+      <span className="text-text-muted line-clamp-2 whitespace-pre-wrap">{text || 'Add something to keep in mind while you train'}</span>
+    </button>
+  );
+};
+
+export const FocusSession: React.FC<FocusSessionProps> = ({ kind, routine, beepVolume, dataRef, range, onRangeChange, onPauseChange, onEnd, focus, onFocusChange }) => {
   const blocks = routine.blocks;
   const isRoutine = kind === 'routine' && blocks.length > 0;
   const [index, setIndex] = useState(0);
@@ -99,7 +126,8 @@ export const FocusSession: React.FC<FocusSessionProps> = ({ kind, routine, beepV
         </div>
       )}
 
-      <div className="flex-1 min-h-0 flex flex-col px-12 pt-8 pb-6">
+      <div className="flex-1 min-h-0 flex flex-col px-12 pt-6 pb-6">
+        <div className="mb-6 shrink-0"><FocusNote text={focus} onChange={onFocusChange} /></div>
         <header className="flex items-start justify-between gap-10 shrink-0">
           <div className="min-w-0 relative">
             <AnimatePresence mode="popLayout" initial={false}>
