@@ -24,8 +24,10 @@ import {
 } from './services/storage';
 import { audioService, AudioService } from './services/audio';
 import { calculateStreaks } from './services/stats';
-import { migrateRoutines, routineLength, copyRoutine } from './services/routines';
-import { RoutinePage, RoutinePicker, NewRoutineMenu, RoutineList } from './components/routines/RoutinesView';
+import { migrateRoutines, routineLength, copyRoutine, planFromDays, daysFromPlan, fixPlan, todayRoutineId, WeekPlan } from './services/routines';
+import { exportAll, ExportItem } from './services/exportRecordings';
+import { exportName } from './services/wav';
+import { RoutinePage, RoutinePicker, NewRoutineMenu, RoutineList, WeekPlanEditor } from './components/routines/RoutinesView';
 import { RoutineNameTitle } from './components/routines/RoutineEditor';
 import { ThisWeek } from './components/today/ThisWeek';
 import { PageHint } from './components/PageHint';
@@ -91,11 +93,16 @@ const App: React.FC = () => {
   
   const [settings, setSettings] = useState<AppSettings>(() => {
     const loaded = loadFromStorage(STORAGE_KEYS.SETTINGS, DEFAULT_SETTINGS);
-    return { 
-        ...DEFAULT_SETTINGS, 
-        ...loaded, 
+    const migrated = migrateRoutines(loaded, { routine: DEFAULT_ROUTINE, planText: DEFAULT_PLAN_TEXT }, () => crypto.randomUUID());
+    // Before the week plan: training days plus one routine. Those days get that routine, the rest are rest days.
+    const weekPlan = fixPlan(loaded.weekPlan ?? planFromDays(loaded.trainingDays ?? [], migrated.activeRoutineId), migrated.routines);
+    return {
+        ...DEFAULT_SETTINGS,
+        ...loaded,
         // ≤1.0.5 had one routine plus a free-text plan; both carry over into the routines list
-        ...migrateRoutines(loaded, { routine: DEFAULT_ROUTINE, planText: DEFAULT_PLAN_TEXT }, () => crypto.randomUUID()),
+        ...migrated,
+        weekPlan,
+        trainingDays: daysFromPlan(weekPlan),
         // Older versions stored one target pitch; turn it into a range around it
         targetRange: loaded.targetRange ?? rangeAround(loaded.targetPitch ?? DEFAULT_SETTINGS.targetPitch),
     };
@@ -121,6 +128,9 @@ const App: React.FC = () => {
 
   // Session State
   const [sessionKind, setSessionKind] = useState<'routine' | 'free'>('routine');
+  const [sessionRoutineId, setSessionRoutineId] = useState('');
+  const [trainAnyway, setTrainAnyway] = useState(false); // rest day on Today, but the user wants to train
+  const sessionRoutine = settings.routines.find(r => r.id === sessionRoutineId) ?? activeRoutineOf(settings);
   const [lastResult, setLastResult] = useState<{ sessionId: string; xpGained: number; levelUpTo: number | null } | null>(null);
   const startTimeRef = useRef<number>(0);
   const endTimeRef = useRef<number>(0);
@@ -210,8 +220,10 @@ const App: React.FC = () => {
 
   // --- Session Flow ---
 
-  const initiateSession = (kind: 'routine' | 'free') => {
+  // The routine is fixed when the session starts, so passing midnight mid-session can't swap it
+  const initiateSession = (kind: 'routine' | 'free', routineId = activeRoutineOf(settings).id) => {
     setSessionKind(kind);
+    setSessionRoutineId(routineId);
     if (settings.skipPreflight) {
         startWorkout();
     } else {
@@ -390,8 +402,8 @@ const App: React.FC = () => {
         pitchData: pitchDataRef.current,
         targetPitch: rangeCenter(settings.targetRange),
         targetRange: settings.targetRange,
-        routineUsed: isRoutine ? activeRoutineOf(settings).id : undefined,
-        routineName: isRoutine ? activeRoutineOf(settings).name : undefined,
+        routineUsed: isRoutine ? sessionRoutine.id : undefined,
+        routineName: isRoutine ? sessionRoutine.name : undefined,
         mode: isRoutine ? 'structured' : 'simple'
     };
 
@@ -594,6 +606,18 @@ const App: React.FC = () => {
       }
   };
 
+  // Every stored recording: session ones named by date and routine, loose ones as "Recording"
+  const exportItems = (): ExportItem[] => [
+      ...sessions.filter(s => s.recordingId).map(s => ({ recordingId: s.recordingId!, name: exportName(s.startTime, titleOf(s)) })),
+      ...recordings.filter(r => !sessions.some(s => s.recordingId === r.id)).map(r => ({ recordingId: r.id, name: exportName(r.date, 'Recording') })),
+  ];
+  const handleExportAll = async () => {
+      const res = await exportAll(exportItems(), (done, total) => setStatusMessage(`Exporting ` + (done + 1) + ` of ` + total + `…`));
+      if (!res) return null;
+      setStatusMessage('Export finished');
+      return `Exported ` + res.written + (res.written === 1 ? ' recording' : ' recordings') + (res.failed ? `. ` + res.failed + ` couldn’t be read.` : '.');
+  };
+
   const handleResetApp = async () => {
       try {
           await clearAllAudioBlobs();
@@ -612,7 +636,7 @@ const App: React.FC = () => {
   const routineIsEmpty = routineBlocks.length === 0;
   const routineMinutes = Math.round(routineBlocks.reduce((a, b) => a + b.duration, 0) / 60);
   const dateLabel = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
-  const sessionTitle = sessionKind === 'routine' ? activeRoutineOf(settings).name : 'Free session';
+  const sessionTitle = sessionKind === 'routine' ? sessionRoutine.name : 'Free session';
   const titleStatus = inSession ? sessionTitle : (statusMessage === 'Ready' ? undefined : statusMessage);
   const setRange = (targetRange: PitchRange) => setSettings(s => ({ ...s, targetRange, targetPitch: rangeCenter(targetRange) }));
 
@@ -635,7 +659,8 @@ const App: React.FC = () => {
               activeRoutineId = copy.id;
           }
           const targetRange = r.range ?? s.targetRange;
-          return { ...s, routines, activeRoutineId, targetRange, targetPitch: rangeCenter(targetRange), trainingDays: r.trainingDays, setupDone: true };
+          const weekPlan = planFromDays(r.trainingDays, activeRoutineId);
+          return { ...s, routines, activeRoutineId, targetRange, targetPitch: rangeCenter(targetRange), weekPlan, trainingDays: daysFromPlan(weekPlan), todayOverride: undefined, setupDone: true };
       });
       navigate({ section: 'today', sub: '' });
   };
@@ -644,6 +669,15 @@ const App: React.FC = () => {
       setRoute(r);
       setHighlight(null);
   };
+  // Week plan: training days are derived from it so the streak code keeps working unchanged
+  const setWeekPlan = (weekPlan: WeekPlan) => setSettings(s => ({ ...s, weekPlan, trainingDays: daysFromPlan(weekPlan) }));
+  const setRoutines = (routines: AppSettings['routines']) => setSettings(s => {
+      const weekPlan = fixPlan(s.weekPlan, routines);
+      return { ...s, routines, weekPlan, trainingDays: daysFromPlan(weekPlan) };
+  });
+  // A pick on Today changes today only; the plan stays
+  const pickForToday = (id: string) => setSettings(s => ({ ...s, activeRoutineId: id, todayOverride: { date: getLocalISODate(), routineId: id } }));
+
   const goRoutine = (id = activeRoutineOf(settings).id) => navigate({ section: 'routines', sub: id });
   // Settings is one page; the command menu's Settings entries scroll to their heading
   useEffect(() => {
@@ -655,11 +689,20 @@ const App: React.FC = () => {
   const dismissHint = (k: string) => setSettings(s => ({ ...s, dismissedHints: [...(s.dismissedHints || []), k] }));
   const hint = (k: string, text: string) => ({ show: showHint(k), onDismiss: () => dismissHint(k), text });
 
-  const todayStart = (
+  const restToday = plannedTodayId(settings) === null && !trainAnyway;
+  const todayStart = restToday ? (
+    <div className="flex items-center justify-between gap-6 py-5 border-y border-border">
+      <div className="min-w-0 flex-1">
+        <div className="text-[17px] font-semibold tracking-[-0.01em]">Rest day</div>
+        <div className="text-[13px] text-text-muted mt-0.5">Nothing is planned today, and resting never breaks your streak.</div>
+      </div>
+      <Button variant="ghost" onClick={() => setTrainAnyway(true)}>Train anyway</Button>
+    </div>
+  ) : (
     <div className="flex items-center justify-between gap-6 py-5 border-y border-border">
       <div className="min-w-0 flex-1">
         <RoutinePicker routines={settings.routines} activeId={activeRoutineOf(settings).id}
-          onPick={(id) => setSettings(s => ({ ...s, activeRoutineId: id }))} onEdit={() => navigate({ section: 'routines', sub: '' })} />
+          onPick={pickForToday} onEdit={() => navigate({ section: 'routines', sub: '' })} />
         <div className="text-[13px] text-text-muted mt-0.5">
           {routineIsEmpty
             ? <>No exercises yet. <button onClick={() => goRoutine()} className="underline decoration-border-strong underline-offset-[3px] hover:text-text transition-colors">Add exercises</button></>
@@ -729,7 +772,7 @@ const App: React.FC = () => {
         {appState === AppState.TRAINING && (
           <FocusSession
             kind={sessionKind}
-            routine={activeRoutineOf(settings)}
+            routine={sessionRoutine}
             beepVolume={settings.beepVolume}
             dataRef={pitchDataRef}
             range={settings.targetRange}
@@ -894,17 +937,19 @@ const App: React.FC = () => {
       <RoutinePage
         routine={shownRoutine}
         routines={settings.routines}
-        activeId={activeRoutineOf(settings).id}
-        onChange={(routines) => setSettings(s => ({ ...s, routines }))}
-        onSetActive={(id) => setSettings(s => ({ ...s, activeRoutineId: id }))}
+        activeId={plannedTodayId(settings) ?? ''}
+        plan={settings.weekPlan}
+        onChange={setRoutines}
+        onSetActive={pickForToday}
         onSelect={(id) => goRoutine(id)}
-        onStart={(id) => { setSettings(s => ({ ...s, activeRoutineId: id })); initiateSession('routine'); }}
+        onStart={(id) => { pickForToday(id); initiateSession('routine', id); }}
       />
     </PageFrame>
   ) : (
     <PageFrame title="Routines" aside={<NewRoutineMenu onCreate={(r) => { setSettings(s => ({ ...s, routines: [...s.routines, r] })); goRoutine(r.id); }} />}
-      hint={hint('routines', 'Click a routine to edit its exercises. The one marked Used on Today is what Start runs.')}>
-      <RoutineList routines={settings.routines} activeId={activeRoutineOf(settings).id} onOpen={(id) => goRoutine(id)} />
+      hint={hint('routines-week', 'Pick a routine for each day in the week plan; Start runs the one for today. Click a routine below to edit its exercises.')}>
+      <WeekPlanEditor plan={settings.weekPlan} routines={settings.routines} onChange={setWeekPlan} />
+      <RoutineList routines={settings.routines} plan={settings.weekPlan} todayId={plannedTodayId(settings)} onOpen={(id) => goRoutine(id)} />
     </PageFrame>
   );
 
@@ -912,7 +957,9 @@ const App: React.FC = () => {
     <PageFrame title="Settings" narrow hint={hint('settings', 'Changes apply right away. There is nothing to save.')}>
       <SettingsView settings={settings} update={(patch) => setSettings(s => ({ ...s, ...patch }))} stats={stats}
         appVersion={appVersion} onReset={handleResetApp} onInstallUpdate={installUpdate}
-        onShowHintsAgain={() => { setSettings(s => ({ ...s, dismissedHints: [] })); setStatusMessage('Page hints will show again'); }} />
+        onShowHintsAgain={() => { setSettings(s => ({ ...s, dismissedHints: [] })); setStatusMessage('Page hints will show again'); }}
+        onOpenWeekPlan={() => navigate({ section: 'routines', sub: '' })}
+        recordingCount={exportItems().length} onExportAll={handleExportAll} />
     </PageFrame>
   );
 
@@ -932,7 +979,7 @@ const App: React.FC = () => {
       ...SETTINGS_PAGES.map(p => ({ id: `go-settings-${p.id}`, group: 'Go to', label: p.label, detail: 'Settings', keywords: 'settings options', run: () => navigate({ section: 'settings', sub: p.id }) })),
       ...settings.routines.filter(r => r.blocks.length > 0).map(r => ({
           id: `start-${r.id}`, group: 'Start a session', label: r.name, detail: routineLength(r),
-          keywords: 'start train routine', run: () => { setSettings(s => ({ ...s, activeRoutineId: r.id })); initiateSession('routine'); },
+          keywords: 'start train routine', run: () => { pickForToday(r.id); initiateSession('routine', r.id); },
       })),
       { id: 'start-free', group: 'Start a session', label: 'Free session', keywords: 'start train stopwatch', run: () => initiateSession('free') },
       ...(trainedToday ? [] : [{
@@ -1046,7 +1093,10 @@ const App: React.FC = () => {
 
 const EASE_OUT = [0.23, 1, 0.32, 1] as const;
 // The routine Start runs; one always exists (the Routines page never deletes the last)
-const activeRoutineOf = (s: AppSettings) => s.routines.find(r => r.id === s.activeRoutineId) ?? s.routines[0];
+const plannedTodayId = (s: AppSettings) => todayRoutineId(s.weekPlan, s.todayOverride, getLocalISODate(), new Date().getDay());
+// Today's routine from the week plan; on a rest day, the last one picked
+const activeRoutineOf = (s: AppSettings) =>
+  s.routines.find(r => r.id === plannedTodayId(s)) ?? s.routines.find(r => r.id === s.activeRoutineId) ?? s.routines[0];
 // A measurement: mono number, text unit, never split across lines
 const Num: React.FC<{ children: React.ReactNode; unit?: string }> = ({ children, unit }) =>
   <span className="whitespace-nowrap"><span className="font-mono tabular-nums text-text">{children}</span>{unit && ` ${unit}`}</span>;

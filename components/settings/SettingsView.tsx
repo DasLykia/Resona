@@ -47,9 +47,18 @@ interface SettingsViewProps {
   onReset: () => void;
   onInstallUpdate: (u: UpdateInfo) => void;
   onShowHintsAgain: () => void;
+  onOpenWeekPlan: () => void;
+  recordingCount: number;
+  onExportAll: () => Promise<string | null>; // result line, or null when cancelled
 }
 
-export const SettingsView: React.FC<SettingsViewProps> = ({ settings, update, stats, appVersion, onReset, onInstallUpdate, onShowHintsAgain }) => {
+export const SettingsView: React.FC<SettingsViewProps> = ({ settings, update, stats, appVersion, onReset, onInstallUpdate, onShowHintsAgain, onOpenWeekPlan, recordingCount, onExportAll }) => {
+  const [exportState, setExportState] = useState<{ busy: boolean; result: string | null }>({ busy: false, result: null });
+  const exportAll = async () => {
+    setExportState({ busy: true, result: null });
+    const result = await onExportAll().catch(() => 'Export failed. Try again.');
+    setExportState({ busy: false, result });
+  };
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
   useEffect(() => { AudioService.getDevices().then(setDevices).catch(() => setDevices([])); }, []);
 
@@ -98,8 +107,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ settings, update, st
       </Group>
 
       <Group id="training" title="Training">
-        <Row label="Training days" hint="Days you don’t train on, and rest days, never break your streak. With no days picked, every day counts.">
-          <TrainingDaysPicker days={settings.trainingDays} onChange={trainingDays => update({ trainingDays })} />
+        <Row label="Week plan" hint="Which routine runs on each day. Days set to Rest never break your streak.">
+          <Button variant="secondary" size="sm" onClick={onOpenWeekPlan}>Open week plan</Button>
         </Row>
         <Row label="Beep between exercises" htmlFor="beep" hint="Plays when a timed exercise ends.">
           <Slider id="beep" value={settings.beepVolume} min={0} max={1} step={0.1} onChange={v => update({ beepVolume: v })}
@@ -131,6 +140,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ settings, update, st
       <Group id="data" title="Progress and data">
         <Row label="Unlock all rewards" hint="All accent colors right away, but you stop earning XP and levels while this is on.">
           <LevelingSwitch settings={settings} stats={stats} update={update} />
+        </Row>
+        <Row label="Export all recordings"
+          hint={exportState.result ?? <>Saves <span className="font-mono tabular-nums">{recordingCount}</span> {recordingCount === 1 ? 'recording' : 'recordings'} as WAV files into a folder you choose.</>}>
+          <Button variant="secondary" size="sm" onClick={exportAll} isLoading={exportState.busy} disabled={recordingCount === 0}>Export all</Button>
         </Row>
         <Row label="Delete recordings with their session" hint="When you delete a session, its recording goes too.">
           <Switch label="Delete recordings with their session" checked={settings.deleteSessionWithRecording} onChange={v => update({ deleteSessionWithRecording: v })} />

@@ -41,3 +41,22 @@ export const parseDuration = (text: string): number | null => {
   const m = /^\d+(\.\d+)?$/.exec(t);
   return m ? Math.round(parseFloat(t) * 60) : null;
 };
+
+// Which routine runs on each weekday. Index = Date.getDay() (0 = Sunday); null = rest day.
+export type WeekPlan = (string | null)[];
+
+// From the old "training days + one routine": planned days get that routine, the rest are rest days.
+// An empty day list used to mean "every day".
+export const planFromDays = (days: number[], routineId: string): WeekPlan =>
+  Array.from({ length: 7 }, (_, d) => (days.length === 0 || days.includes(d) ? routineId : null));
+
+// The streak still reads training days. shortcut: an all-rest plan gives [] which the streak treats as "every day"; fine until someone plans zero days on purpose.
+export const daysFromPlan = (plan: WeekPlan) => plan.flatMap((id, d) => (id ? [d] : []));
+
+// Days whose routine was deleted move to the first remaining one
+export const fixPlan = (plan: WeekPlan, routines: Pick<Routine, 'id'>[]): WeekPlan =>
+  plan.map(id => (id && !routines.some(r => r.id === id) ? routines[0]?.id ?? null : id));
+
+// Today's routine: a just-for-today pick wins over the plan; null = rest day
+export const todayRoutineId = (plan: WeekPlan, override: { date: string; routineId: string } | undefined, todayKey: string, weekday: number) =>
+  override?.date === todayKey ? override.routineId : plan[weekday] ?? null;

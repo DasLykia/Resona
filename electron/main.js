@@ -1,5 +1,6 @@
 import { VelopackApp, UpdateManager } from 'velopack';
-import { app, BrowserWindow, ipcMain, Menu, nativeTheme } from "electron";
+import { app, BrowserWindow, dialog, ipcMain, Menu, nativeTheme } from "electron";
+import fs from "fs/promises";
 import path from "path";
 import { fileURLToPath } from "url";
 import Store from "electron-store";
@@ -108,6 +109,25 @@ ipcMain.on("window:set-theme", (event, source) => {
 
 nativeTheme.on("updated", () => {
   if (win && !win.isDestroyed()) win.setTitleBarOverlay(overlayFor(nativeTheme.shouldUseDarkColors));
+});
+
+// --- Export recordings ---
+// The renderer only sends a file name and bytes; files land in the folder the user picked here, never elsewhere
+let exportDir = null;
+ipcMain.handle("export:choose-folder", async () => {
+  const r = await dialog.showOpenDialog(win, { title: "Export recordings to", properties: ["openDirectory", "createDirectory"] });
+  exportDir = r.canceled ? null : r.filePaths[0];
+  return exportDir;
+});
+
+ipcMain.handle("export:write", async (event, name, data) => {
+  if (!exportDir) throw new Error("No export folder chosen");
+  const safe = path.basename(String(name)).replace(/[<>:"/\\|?*\x00-\x1f]/g, "_").slice(0, 150) || "recording.wav";
+  const { name: stem, ext } = path.parse(safe);
+  let target = path.join(exportDir, safe);
+  // Never overwrite: "name (2).wav", "name (3).wav", ...
+  for (let i = 2; await fs.access(target).then(() => true, () => false); i++) target = path.join(exportDir, `${stem} (${i})${ext}`);
+  await fs.writeFile(target, Buffer.from(data));
 });
 
 // --- Other IPC Handlers ---

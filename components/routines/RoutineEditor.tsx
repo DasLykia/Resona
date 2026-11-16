@@ -13,6 +13,7 @@ const input = 'bg-transparent outline-none rounded-md px-2 -mx-2 py-1 transition
 interface RoutineEditorProps {
   routine: Routine;
   isActive: boolean;
+  days: string; // "Mon, Thu" from the week plan; empty when not planned
   canDelete: boolean;
   onChange: (r: Routine) => void;
   onUseOnToday: () => void;
@@ -20,7 +21,7 @@ interface RoutineEditorProps {
   onDelete: () => void;
 }
 
-export const RoutineEditor: React.FC<RoutineEditorProps> = ({ routine, isActive, canDelete, onChange, onUseOnToday, onDuplicate, onDelete }) => {
+export const RoutineEditor: React.FC<RoutineEditorProps> = ({ routine, isActive, days, canDelete, onChange, onUseOnToday, onDuplicate, onDelete }) => {
   const total = routine.blocks.reduce((a, b) => a + b.duration, 0);
   const openCount = routine.blocks.filter(b => b.duration === 0).length;
   const setBlocks = (blocks: ExerciseBlock[]) => onChange({ ...routine, blocks });
@@ -48,11 +49,12 @@ export const RoutineEditor: React.FC<RoutineEditorProps> = ({ routine, isActive,
           <div className="text-[13px] text-text-muted xl:pt-1.5">
             <span className="font-mono tabular-nums">{routine.blocks.length}</span> {routine.blocks.length === 1 ? 'exercise' : 'exercises'} ·{' '}
             <span className="font-mono tabular-nums">{fmt(total)}</span>{openCount > 0 && <> plus <span className="font-mono tabular-nums">{openCount}</span> open-ended</>}
+            {' · '}{days ? <>planned {days === 'Every day' ? 'every day' : `on ${days}`}</> : 'not in your week plan'}
           </div>
         </div>
         <div className="flex items-center gap-1 shrink-0 xl:pt-1 -ml-2 xl:ml-0">
-          {isActive ? <span className="text-[13px] text-primary px-2 mr-1">Used on Today</span>
-            : <Button size="sm" onClick={onUseOnToday}>Use on Today</Button>}
+          {isActive ? <span className="text-[13px] text-primary px-2 mr-1">Runs today</span>
+            : <Button size="sm" onClick={onUseOnToday} title="Run this routine today only; your week plan stays the same">Use today</Button>}
           <Button variant="ghost" size="sm" onClick={onDuplicate}>Duplicate</Button>
           {canDelete && (
             <ConfirmButton confirmLabel="Delete routine" message={`Delete “${routine.name}”? Past sessions keep their logs. This can’t be undone.`} onConfirm={onDelete}>

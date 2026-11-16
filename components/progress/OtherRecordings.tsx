@@ -3,6 +3,8 @@ import type { Recording } from '../../types';
 import { Button } from '../Button';
 import { ConfirmButton } from '../ConfirmButton';
 import { StoredRecording } from '../RecordingPlayer';
+import { ExportButton } from '../ExportButton';
+import { exportName } from '../../services/wav';
 
 // Recordings no session points to any more (their session was deleted while recordings were kept)
 export const OtherRecordings: React.FC<{ recordings: Recording[]; onDelete: (id: string) => void }> = ({ recordings, onDelete }) => {
@@ -19,6 +21,7 @@ export const OtherRecordings: React.FC<{ recordings: Recording[]; onDelete: (id:
               <span className="font-mono tabular-nums">{Math.round(r.duration / 60)}</span> min · <span className="font-mono tabular-nums">{(r.size / 1e6).toFixed(1)}</span> MB
             </span>
             <Button variant="ghost" size="sm" onClick={() => setOpenId(openId === r.id ? null : r.id)}>{openId === r.id ? 'Close' : 'Play'}</Button>
+            <ExportButton recordingId={r.id} name={exportName(r.date, 'Recording')} />
             <ConfirmButton confirmLabel="Delete" message="Delete this recording? This can’t be undone." onConfirm={() => onDelete(r.id)}>Delete</ConfirmButton>
           </div>
           {openId === r.id && <div className="mt-3"><StoredRecording id={r.id} fallbackLength={r.duration} /></div>}

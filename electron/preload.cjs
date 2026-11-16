@@ -11,3 +11,8 @@ contextBridge.exposeInMainWorld("velopackApi", {
 contextBridge.exposeInMainWorld("resonaWindow", {
     setTheme: (source) => ipcRenderer.send("window:set-theme", source),
 });
+
+contextBridge.exposeInMainWorld("resonaFiles", {
+    chooseExportFolder: () => ipcRenderer.invoke("export:choose-folder"),
+    writeExport: (name, data) => ipcRenderer.invoke("export:write", name, data),
+});

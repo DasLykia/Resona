@@ -1,6 +1,6 @@
 // Run: node --experimental-strip-types services/routines.selftest.ts
 import assert from 'node:assert/strict';
-import { copyRoutine, migrateRoutines, parseDuration } from './routines.ts';
+import { copyRoutine, daysFromPlan, fixPlan, migrateRoutines, parseDuration, planFromDays, todayRoutineId } from './routines.ts';
 
 let n = 0;
 const id = () => `id${++n}`;
@@ -39,4 +39,12 @@ assert.equal(parseDuration('2.5'), 150);
 assert.equal(parseDuration('0:45'), 45);
 assert.equal(parseDuration('3:75'), null);
 assert.equal(parseDuration('abc'), null);
+// Week plan
+assert.deepEqual(planFromDays([1, 3], 'a'), [null, 'a', null, 'a', null, null, null]);
+assert.deepEqual(planFromDays([], 'a'), Array(7).fill('a'));
+assert.deepEqual(daysFromPlan([null, 'a', 'b', null, null, null, 'a']), [1, 2, 6]);
+assert.deepEqual(fixPlan(['gone', 'b', null, null, null, null, null], [{ id: 'b' }]), ['b', 'b', null, null, null, null, null]);
+assert.equal(todayRoutineId([null, 'a'], { date: '2026-11-16', routineId: 'x' }, '2026-11-16', 1), 'x');
+assert.equal(todayRoutineId([null, 'a'], { date: '2026-11-15', routineId: 'x' }, '2026-11-16', 1), 'a');
+assert.equal(todayRoutineId([null, 'a'], undefined, '2026-11-16', 0), null);
 console.log('routines ok');

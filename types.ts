@@ -89,7 +89,9 @@ export interface AppSettings {
   
   // Routines: several saved, one used on Today
   routines: Routine[];
-  activeRoutineId: string;
+  activeRoutineId: string; // last routine picked; the fallback when a plan day has none
+  weekPlan: (string | null)[]; // routine per weekday, index = Date.getDay(), null = rest. Training days are derived from it.
+  todayOverride?: { date: string; routineId: string }; // "just today" pick from Today
 
   // First-launch setup and page hints
   setupDone?: boolean;

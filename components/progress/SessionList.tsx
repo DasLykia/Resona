@@ -5,6 +5,8 @@ import { computePitchStats, STRAIN_LABELS, strainFromEffort } from '../../servic
 import { Button } from '../Button';
 import { ConfirmButton } from '../ConfirmButton';
 import { StoredRecording } from '../RecordingPlayer';
+import { ExportButton } from '../ExportButton';
+import { exportName } from '../../services/wav';
 import { IconChevronRight } from '../icons';
 import { PitchTrace } from './PitchTrace';
 
@@ -146,7 +148,7 @@ export const SessionList: React.FC<SessionListProps> = ({ sessions, range, title
                     exit={{ height: 0, opacity: 0, transition: { duration: 0.19, ease: EASE_OUT } }}
                     className="overflow-hidden"
                   >
-                    <SessionDetail session={s} range={s.targetRange ?? range} syncDelete={syncDelete}
+                    <SessionDetail session={s} range={s.targetRange ?? range} syncDelete={syncDelete} title={title(s)}
                       onUpdateNote={onUpdateNote} onDelete={onDelete} onRemoveRecording={onRemoveRecording} />
                   </motion.div>
                 )}
@@ -178,7 +180,7 @@ export const SessionList: React.FC<SessionListProps> = ({ sessions, range, title
                 {new Date(openSession.startTime).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })} at{' '}
                 {new Date(openSession.startTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
               </p>
-              <SessionDetail session={openSession} range={openSession.targetRange ?? range} syncDelete={syncDelete}
+              <SessionDetail session={openSession} range={openSession.targetRange ?? range} syncDelete={syncDelete} title={title(openSession)}
                 onUpdateNote={onUpdateNote} onDelete={onDelete} onRemoveRecording={onRemoveRecording} />
             </motion.div>
           ) : (
@@ -207,9 +209,9 @@ const useWide = () => {
 };
 
 const SessionDetail: React.FC<{
-  session: TrainingSession; range: PitchRange; syncDelete: boolean;
+  session: TrainingSession; range: PitchRange; syncDelete: boolean; title: string;
   onUpdateNote: (id: string, note: string) => void; onDelete: (id: string) => void; onRemoveRecording: (recordingId: string) => void;
-}> = ({ session, range, syncDelete, onUpdateNote, onDelete, onRemoveRecording }) => {
+}> = ({ session, range, syncDelete, title, onUpdateNote, onDelete, onRemoveRecording }) => {
   const [note, setNote] = useState(session.notes ?? '');
   const [playhead, setPlayhead] = useState<number | null>(null);
   const dirty = note !== (session.notes ?? '');
@@ -240,6 +242,7 @@ const SessionDetail: React.FC<{
                 Remove recording
               </ConfirmButton>
             )}
+            {session.recordingId && <ExportButton recordingId={session.recordingId} name={exportName(session.startTime, title)} />}
           </div>
           {dirty && (
             <div className="flex gap-2">

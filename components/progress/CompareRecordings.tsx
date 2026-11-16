@@ -7,6 +7,8 @@ import { Segmented } from '../Segmented';
 import { Popover } from '../Popover';
 import { PlayPauseIcon, SeekBar, fmtClock } from '../RecordingPlayer';
 import { PitchTrace } from './PitchTrace';
+import { ExportButton } from '../ExportButton';
+import { exportName } from '../../services/wav';
 
 type Side = 'then' | 'now';
 
@@ -115,6 +117,7 @@ export const CompareRecordings: React.FC<{ sessions: TrainingSession[]; range: P
           <Segmented label="Which recording plays" value={side} onChange={switchTo}
             options={[{ value: 'then', label: 'Then' }, { value: 'now', label: 'Now' }]} />
           <span className="ml-auto font-mono tabular-nums text-[12.5px] text-text-muted">{fmtClock(t)} / {fmtClock(len)}</span>
+          {current?.recordingId && <ExportButton recordingId={current.recordingId} name={exportName(current.startTime, title(current))} />}
         </div>
         <div className="mt-3 flex"><SeekBar value={t} max={len} label="Seek the playing recording" onSeek={v => { const el = audio[side].current; if (el) { el.currentTime = v; setT(v); } }} /></div>
         <p className="mt-2 text-[12.5px] text-text-muted">Switching between Then and Now keeps your place, so you hear the same moment in both.</p>

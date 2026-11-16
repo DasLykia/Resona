@@ -14,5 +14,6 @@ declare global {
     velopackApi: IVelopackAPI;
     // Only present inside Electron
     resonaWindow?: { setTheme: (source: 'system' | 'light' | 'dark') => void };
+    resonaFiles?: { chooseExportFolder: () => Promise<string | null>; writeExport: (name: string, data: ArrayBuffer) => Promise<void> };
   }
 }

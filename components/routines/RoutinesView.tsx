@@ -1,19 +1,28 @@
 import React, { useRef, useState } from 'react';
 import type { Routine } from '../../types';
 import { ROUTINE_TEMPLATES } from '../../constants';
-import { copyRoutine, routineLength } from '../../services/routines';
+import { copyRoutine, routineLength, WeekPlan } from '../../services/routines';
 import { Button } from '../Button';
 import { Popover } from '../Popover';
 import { RoutineEditor } from './RoutineEditor';
 
 const newId = () => crypto.randomUUID();
 const fmt = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+const ORDER = [1, 2, 3, 4, 5, 6, 0]; // Monday first; values are Date.getDay()
+const SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const FULL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+// "Mon, Thu" for the days a routine is planned on
+export const daysLabel = (plan: WeekPlan, id: string) => {
+  const days = ORDER.filter(d => plan[d] === id);
+  return days.length === 7 ? 'Every day' : days.map(d => SHORT[d]).join(', ');
+};
 const OPEN_WEIGHT = 120; // open-ended blocks drawn as 2 min, same as the session progress hairline
 
 interface RoutinePageProps {
   routine: Routine;
   routines: Routine[];
   activeId: string;
+  plan: WeekPlan;
   onChange: (routines: Routine[]) => void;
   onSetActive: (id: string) => void;
   onSelect: (id: string) => void;
@@ -21,7 +30,7 @@ interface RoutinePageProps {
 }
 
 // One routine: its editor, and on wide windows a side column showing how a session will run
-export const RoutinePage: React.FC<RoutinePageProps> = ({ routine, routines, activeId, onChange, onSetActive, onSelect, onStart }) => {
+export const RoutinePage: React.FC<RoutinePageProps> = ({ routine, routines, activeId, plan, onChange, onSetActive, onSelect, onStart }) => {
   const replace = (r: Routine) => onChange(routines.map(x => (x.id === r.id ? r : x)));
   const remove = () => {
     const rest = routines.filter(r => r.id !== routine.id);
@@ -43,6 +52,7 @@ export const RoutinePage: React.FC<RoutinePageProps> = ({ routine, routines, act
         key={routine.id}
         routine={routine}
         isActive={routine.id === activeId}
+        days={daysLabel(plan, routine.id)}
         canDelete={routines.length > 1}
         onChange={replace}
         onUseOnToday={() => onSetActive(routine.id)}
@@ -81,20 +91,45 @@ export const RoutinePage: React.FC<RoutinePageProps> = ({ routine, routines, act
 };
 
 // The Routines page: every routine as one row; click to edit
-export const RoutineList: React.FC<{ routines: Routine[]; activeId: string; onOpen: (id: string) => void }> = ({ routines, activeId, onOpen }) => (
+export const RoutineList: React.FC<{ routines: Routine[]; plan: WeekPlan; todayId: string | null; onOpen: (id: string) => void }> = ({ routines, plan, todayId, onOpen }) => (
   <ul className="border-t border-border">
     {routines.map(r => (
       <li key={r.id}>
         <button onClick={() => onOpen(r.id)}
           className="w-full flex items-baseline gap-4 px-3 -mx-3 py-3.5 border-b border-border text-left rounded-none hover:bg-text/[0.03] transition-colors">
           <span className="flex-1 min-w-0 truncate text-[14px] font-medium">{r.name || 'Untitled routine'}</span>
-          {r.id === activeId && <span className="text-[13px] text-primary">Used on Today</span>}
+          {r.id === todayId && <span className="text-[13px] text-primary">Today</span>}
+          <span className="w-40 text-right text-[13px] text-text-muted truncate">{daysLabel(plan, r.id) || 'Not planned'}</span>
           <span className="w-28 text-right text-[13px] text-text-muted">{r.blocks.length ? routineLength(r) : 'No exercises'}</span>
         </button>
       </li>
     ))}
   </ul>
 );
+
+// Monday to Sunday, each with its routine or Rest
+export const WeekPlanEditor: React.FC<{ plan: WeekPlan; routines: Routine[]; onChange: (p: WeekPlan) => void }> = ({ plan, routines, onChange }) => {
+  const today = new Date().getDay();
+  return (
+    <section className="mb-12">
+      <h2 className="text-[15px] font-semibold">Week plan</h2>
+      <p className="mt-1 text-[13px] text-text-muted">Which routine Start runs on each day. Rest days never break your streak.</p>
+      <div className="mt-4 grid grid-cols-7 border-y border-border divide-x divide-border">
+        {ORDER.map(d => (
+          <label key={d} className="block p-2">
+            <span className={`block mb-1.5 text-[12px] ${d === today ? 'text-text font-semibold underline underline-offset-4 decoration-2 decoration-primary' : 'text-text-muted'}`}>{SHORT[d]}</span>
+            <select value={plan[d] ?? ''} aria-label={`Routine on ${FULL[d]}`}
+              onChange={e => onChange(plan.map((x, i) => (i === d ? e.target.value || null : x)))}
+              className={`w-full h-8 rounded-lg border border-border-strong bg-surface px-1.5 text-[13px] outline-none focus:border-primary transition-colors truncate ${plan[d] ? '' : 'text-text-muted'}`}>
+              <option value="">Rest</option>
+              {routines.map(r => <option key={r.id} value={r.id}>{r.name || 'Untitled routine'}</option>)}
+            </select>
+          </label>
+        ))}
+      </div>
+    </section>
+  );
+};
 
 // Opens the template choice for a new routine
 export const NewRoutineMenu: React.FC<{ onCreate: (r: Routine) => void }> = ({ onCreate }) => {

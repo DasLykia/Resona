@@ -170,6 +170,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   
   routines: [DEFAULT_ROUTINE],
   activeRoutineId: DEFAULT_ROUTINE.id,
+  weekPlan: Array(7).fill(DEFAULT_ROUTINE.id),
   
   sessionFocus: DEFAULT_SESSION_FOCUS,
   theme: 'system',
