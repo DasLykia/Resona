@@ -46,6 +46,8 @@ import { ActivityCalendar } from './components/progress/ActivityCalendar';
 import { SessionList, sessionStrain } from './components/progress/SessionList';
 import { OtherRecordings } from './components/progress/OtherRecordings';
 import { Goals, Achievements } from './components/progress/GoalsAndAchievements';
+import { Journey } from './components/progress/Journey';
+import { monthRecaps } from './services/recap';
 import { version } from './package.json';
 
 // --- APPEARANCE ---
@@ -768,12 +770,24 @@ const App: React.FC = () => {
     </div>
   );
 
+  // First week of a month: one line pointing at last month's recap, until opened or dismissed
+  const lastMonth = (() => { const d = new Date(); d.setDate(0); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`; })();
+  const recapNote = new Date().getDate() <= 7 && settings.seenRecap !== lastMonth && Object.keys(stats.history).some(k => k.startsWith(lastMonth)) && (
+    <p className="-mt-6 text-[13.5px] text-text-muted">
+      Your {new Date(lastMonth + '-01T12:00').toLocaleDateString('en-US', { month: 'long' })} recap is ready.{' '}
+      <button onClick={() => { setSettings(s => ({ ...s, seenRecap: lastMonth })); navigate({ section: 'progress', sub: 'journey' }); }}
+        className="text-text underline decoration-border-strong underline-offset-[3px] hover:decoration-text transition-colors">See your month</button>
+      <button onClick={() => setSettings(s => ({ ...s, seenRecap: lastMonth }))} className="ml-4 hover:text-text transition-colors">Dismiss</button>
+    </p>
+  );
+
   const todayPage = (
     <PageFrame title="Today" center aside={<span className="text-[13px] text-text-muted">{dateLabel}</span>}
       hint={hint('today', 'Start runs the routine shown here; click its name to switch routines. Free session is a stopwatch with live pitch and recording.')}>
       <div className="space-y-12">
         {todayStart}
         {strainNote}
+        {recapNote}
         <ThisWeek secondsByDay={stats.history} restDays={stats.sickDays} trainingDays={settings.trainingDays}
           streak={stats.currentStreak} onToggleRest={toggleRestDay} onTimeOff={markTimeOff} />
       </div>
@@ -884,6 +898,10 @@ const App: React.FC = () => {
     </p>
   );
 
+  const recaps = useMemo(() => monthRecaps(
+      sessions.map(s => ({ startTime: s.startTime, median: computePitchStats(s.pitchData, s.targetRange ?? settings.targetRange).median })),
+      stats.history), [sessions, stats.history, settings.targetRange]);
+
   const progressTab = PROGRESS_PAGES.some(p => p.id === route.sub) ? route.sub : 'overview';
   const progressTabs: Record<string, React.ReactNode> = {
     overview: (
@@ -925,6 +943,7 @@ const App: React.FC = () => {
         </div>
       </div>
     ),
+    journey: <Journey recaps={recaps} sessions={sessions} title={titleOf} onOpenSession={jumpToSession} />,
     compare: <CompareRecordings sessions={sessions} range={settings.targetRange} title={titleOf} />,
     sessions: (
       <>
@@ -935,6 +954,7 @@ const App: React.FC = () => {
           highlight={highlight}
           syncDelete={settings.deleteSessionWithRecording}
           onUpdateNote={(id, note) => setSessions(prev => prev.map(s => s.id === id ? { ...s, notes: note.trim() || undefined } : s))}
+          onSetMilestone={(id, milestone) => setSessions(prev => prev.map(s => s.id === id ? { ...s, milestone } : s))}
           onDelete={handleDeleteSession}
           onBulkDelete={handleBulkDeleteSessions}
           onRemoveRecording={handleDeleteRecording}

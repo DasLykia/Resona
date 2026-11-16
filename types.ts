@@ -42,6 +42,7 @@ export interface TrainingSession {
   targetRange?: PitchRange;
   healthLog?: VocalHealthLog; 
   routineUsed?: string;
+  milestone?: string; // user's title when marked as a milestone (Journey tab)
   routineName?: string; // name at the time of the session, so renaming or deleting the routine keeps history
   mode?: 'structured' | 'simple';
 }
@@ -92,6 +93,7 @@ export interface AppSettings {
   activeRoutineId: string; // last routine picked; the fallback when a plan day has none
   weekPlan: (string | null)[]; // routine per weekday, index = Date.getDay(), null = rest. Training days are derived from it.
   todayOverride?: { date: string; routineId: string }; // "just today" pick from Today
+  seenRecap?: string; // "2026-10": last month whose recap nudge was opened or dismissed on Today
 
   // First-launch setup and page hints
   setupDone?: boolean;

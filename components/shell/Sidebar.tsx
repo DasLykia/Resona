@@ -9,6 +9,7 @@ export const PROGRESS_PAGES = [
   { id: 'overview', label: 'Overview' },
   { id: 'compare', label: 'Then and now' },
   { id: 'sessions', label: 'Sessions' },
+  { id: 'journey', label: 'Journey' },
 ] as const;
 
 export const SETTINGS_PAGES = [

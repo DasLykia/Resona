@@ -13,7 +13,7 @@ import { PitchTrace } from './PitchTrace';
 const PAGE = 25;
 const EASE_OUT = [0.23, 1, 0.32, 1] as const;
 // Fits the 880px minimum window; time of day only shows on wide windows
-const COLS = 'grid grid-cols-[minmax(4.5rem,1fr)_minmax(6rem,1.8fr)_3.5rem_4.5rem_4rem_5.75rem_1rem] gap-3 xl:gap-4 items-baseline';
+const COLS = 'grid grid-cols-[8.25rem_minmax(6rem,1fr)_3.5rem_4.5rem_4rem_5.75rem_1rem] gap-3 xl:gap-4 items-baseline';
 
 export const sessionStrain = (s: TrainingSession) =>
   s.healthLog ? (s.healthLog.strain ?? strainFromEffort(s.healthLog.effort)) : null;
@@ -25,12 +25,13 @@ interface SessionListProps {
   highlight: { id: string; at: number } | null;
   syncDelete: boolean;
   onUpdateNote: (id: string, note: string) => void;
+  onSetMilestone: (id: string, title: string | undefined) => void;
   onDelete: (id: string) => void;
   onBulkDelete: (ids: string[]) => void;
   onRemoveRecording: (recordingId: string) => void;
 }
 
-export const SessionList: React.FC<SessionListProps> = ({ sessions, range, title, highlight, syncDelete, onUpdateNote, onDelete, onBulkDelete, onRemoveRecording }) => {
+export const SessionList: React.FC<SessionListProps> = ({ sessions, range, title, highlight, syncDelete, onUpdateNote, onSetMilestone, onDelete, onBulkDelete, onRemoveRecording }) => {
   const [query, setQuery] = useState('');
   const [flashId, setFlashId] = useState<string | null>(null); // brief tint on the row you jumped to
   const [openId, setOpenId] = useState<string | null>(null);
@@ -131,7 +132,7 @@ export const SessionList: React.FC<SessionListProps> = ({ sessions, range, title
                   aria-expanded={wide ? undefined : open} aria-current={wide && open ? 'true' : undefined}
                   className={`${COLS} flex-1 py-3 text-left text-[13.5px] hover:bg-text/[0.03] transition-colors rounded-lg`}>
                   <span className="font-mono tabular-nums text-[12.5px] whitespace-nowrap">{date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}<span className="hidden xl:inline text-text-muted"> · {date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}</span></span>
-                  <span className="truncate">{title(s)}{s.notes && <span className="text-text-muted"> · {s.notes}</span>}</span>
+                  <span className="truncate">{s.milestone && <span className="text-primary">{s.milestone} · </span>}{title(s)}{s.notes && <span className="text-text-muted"> · {s.notes}</span>}</span>
                   <span className="font-mono tabular-nums text-[12.5px] text-right">{Math.floor(s.duration / 60)}:{String(s.duration % 60).padStart(2, '0')}</span>
                   <span className="font-mono tabular-nums text-[12.5px] text-right">{stats.median ?? '–'}</span>
                   <span className="font-mono tabular-nums text-[12.5px] text-right">{stats.median === null ? '–' : `${stats.inRangePct}%`}</span>
@@ -149,7 +150,7 @@ export const SessionList: React.FC<SessionListProps> = ({ sessions, range, title
                     className="overflow-hidden"
                   >
                     <SessionDetail session={s} range={s.targetRange ?? range} syncDelete={syncDelete} title={title(s)}
-                      onUpdateNote={onUpdateNote} onDelete={onDelete} onRemoveRecording={onRemoveRecording} />
+                      onUpdateNote={onUpdateNote} onSetMilestone={onSetMilestone} onDelete={onDelete} onRemoveRecording={onRemoveRecording} />
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -181,7 +182,7 @@ export const SessionList: React.FC<SessionListProps> = ({ sessions, range, title
                 {new Date(openSession.startTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
               </p>
               <SessionDetail session={openSession} range={openSession.targetRange ?? range} syncDelete={syncDelete} title={title(openSession)}
-                onUpdateNote={onUpdateNote} onDelete={onDelete} onRemoveRecording={onRemoveRecording} />
+                onUpdateNote={onUpdateNote} onSetMilestone={onSetMilestone} onDelete={onDelete} onRemoveRecording={onRemoveRecording} />
             </motion.div>
           ) : (
             <motion.p key="empty" className="text-[13.5px] text-text-muted" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
@@ -211,13 +212,15 @@ const useWide = () => {
 const SessionDetail: React.FC<{
   session: TrainingSession; range: PitchRange; syncDelete: boolean; title: string;
   onUpdateNote: (id: string, note: string) => void; onDelete: (id: string) => void; onRemoveRecording: (recordingId: string) => void;
-}> = ({ session, range, syncDelete, title, onUpdateNote, onDelete, onRemoveRecording }) => {
+  onSetMilestone: (id: string, title: string | undefined) => void;
+}> = ({ session, range, syncDelete, title, onUpdateNote, onSetMilestone, onDelete, onRemoveRecording }) => {
   const [note, setNote] = useState(session.notes ?? '');
   const [playhead, setPlayhead] = useState<number | null>(null);
   const dirty = note !== (session.notes ?? '');
 
   return (
     <div className="pt-2 pb-6 pl-1 pr-1 space-y-5">
+      <MilestoneRow value={session.milestone} onSave={t => onSetMilestone(session.id, t)} />
       <PitchTrace traces={[{ data: session.pitchData ?? [], tone: 'accent' }]} range={range}
         durationMs={session.duration * 1000} playheadMs={playhead} height={150} />
       {session.recordingId && (
@@ -253,5 +256,33 @@ const SessionDetail: React.FC<{
         </div>
       </div>
     </div>
+  );
+};
+
+// A session worth remembering ("First time over 200 Hz"); shows on the Journey tab
+const MilestoneRow: React.FC<{ value?: string; onSave: (title: string | undefined) => void }> = ({ value, onSave }) => {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value ?? '');
+  const link = 'relative before:absolute before:-inset-1.5 before:content-[\'\'] text-[12.5px] text-text-muted hover:text-text transition-colors';
+  if (editing) {
+    const save = () => { onSave(draft.trim() || undefined); setEditing(false); };
+    return (
+      <div className="flex items-center gap-2">
+        <input autoFocus value={draft} onChange={e => setDraft(e.target.value)} maxLength={80} placeholder="e.g. First time over 200 Hz" aria-label="Milestone title"
+          onKeyDown={e => { if (e.key === 'Enter') save(); if (e.key === 'Escape') setEditing(false); }}
+          className="flex-1 min-w-0 h-8 rounded-lg border border-border-strong focus:border-primary bg-surface px-2.5 text-[13.5px] outline-none transition-colors placeholder:text-text-muted" />
+        <Button variant="ghost" size="sm" onClick={() => setEditing(false)}>Cancel</Button>
+        <Button size="sm" onClick={save}>Save</Button>
+      </div>
+    );
+  }
+  return value ? (
+    <div className="flex items-baseline gap-4">
+      <p className="text-[13.5px]"><span className="text-text-muted">Milestone</span> <span className="text-primary font-medium">{value}</span></p>
+      <button onClick={() => { setDraft(value); setEditing(true); }} className={link}>Rename</button>
+      <button onClick={() => onSave(undefined)} className={link}>Remove</button>
+    </div>
+  ) : (
+    <button onClick={() => { setDraft(''); setEditing(true); }} className={link}>Mark as milestone</button>
   );
 };
