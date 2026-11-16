@@ -6,6 +6,7 @@ import type { UpdateInfo } from 'velopack';
 
 import { Button } from './components/Button';
 import { Modal } from './components/Modal';
+import type { BackgroundConfig } from './electron';
 import { Segmented } from './components/Segmented';
 import { Sidebar, Route, PROGRESS_PAGES, SETTINGS_PAGES } from './components/shell/Sidebar';
 import { TitleBar } from './components/shell/TitleBar';
@@ -20,7 +21,7 @@ import {
   XP_PER_MINUTE, XP_PER_SESSION, XP_LEVEL_BASE, THEMES, DEFAULT_ROUTINE, DEFAULT_PLAN_TEXT, ROUTINE_TEMPLATES, VOICE_DIRECTIONS
 } from './constants';
 import { 
-  loadFromStorage, saveToStorage, saveAudioBlob, deleteAudioBlob, clearAllAudioBlobs
+  loadFromStorage, saveToStorage, saveAudioBlob, getAudioBlob, deleteAudioBlob, clearAllAudioBlobs
 } from './services/storage';
 import { audioService, AudioService } from './services/audio';
 import { calculateStreaks } from './services/stats';
@@ -685,6 +686,66 @@ const App: React.FC = () => {
   useAppearance(settings);
   const wide = useWide();
   useInterfaceSize(settings.uiScale, (uiScale) => setSettings(s => ({ ...s, uiScale })));
+
+  // --- BACKGROUND (installed app) ---
+  // The main process keeps its own copy, so the tray and reminder work while no page is loaded
+  const todayISO = getLocalISODate();
+  const nameOfRoutine = (id: string | null | undefined) => settings.routines.find(r => r.id === id)?.name ?? null;
+  const overrideName = nameOfRoutine(settings.todayOverride?.routineId);
+  const background: BackgroundConfig = {
+      openAtLogin: !!settings.openAtLogin,
+      tray: !!settings.keepInTray,
+      reminder: settings.reminder ?? { on: false, time: '18:00' },
+      plan: settings.weekPlan.map(nameOfRoutine),
+      override: settings.todayOverride && overrideName ? { date: settings.todayOverride.date, name: overrideName } : null,
+      skip: [...Object.keys(stats.sickDays || {}).filter(d => d >= todayISO), ...(stats.history[todayISO] ? [todayISO] : [])],
+  };
+  const backgroundKey = JSON.stringify(background);
+  useEffect(() => { window.resonaWindow?.setBackground?.(background); }, [backgroundKey]);
+
+  // Closing mid-session: main asks the page, which saves what was recorded before letting it close
+  const [askClose, setAskClose] = useState(false);
+  useEffect(() => { window.resonaWindow?.setBusy?.(appState === AppState.TRAINING); }, [appState]);
+  useEffect(() => window.resonaWindow?.onCloseRequested?.(() => setAskClose(true)), []);
+  useEffect(() => window.resonaWindow?.onGo?.(() => navigate({ section: 'today', sub: '' })), []);
+  const endAndClose = async () => {
+      setAskClose(false);
+      await finishWorkout();
+      await new Promise(r => setTimeout(r, 300)); // let the storage effects write before the page unloads
+      window.resonaWindow?.closeNow();
+  };
+
+  // --- UNDO for deletes (after their confirm) ---
+  // Keeps the state from before, plus the audio of any recording the delete may remove
+  const [undo, setUndo] = useState<{ label: string; at: number; restore: () => void } | null>(null);
+  useEffect(() => {
+      if (!undo) return;
+      const id = window.setTimeout(() => setUndo(null), 6000);
+      return () => clearTimeout(id);
+  }, [undo]);
+  const undoable = async (label: string, run: () => unknown, recordingIds: (string | undefined)[] = []) => {
+      const before = {
+          sessions, recordings, stats, goals,
+          plan: { routines: settings.routines, weekPlan: settings.weekPlan, trainingDays: settings.trainingDays, activeRoutineId: settings.activeRoutineId, todayOverride: settings.todayOverride },
+      };
+      const audio: [string, Blob][] = [];
+      for (const id of new Set(recordingIds.filter((x): x is string => !!x))) {
+          const blob = await getAudioBlob(id).catch(() => undefined);
+          if (blob) audio.push([id, blob]);
+      }
+      await run();
+      setUndo({ label, at: Date.now(), restore: async () => {
+          setUndo(null);
+          try { for (const [id, blob] of audio) await saveAudioBlob(id, blob); }
+          catch (e) { console.error('Undo: recording audio not restored', e); }
+          setSessions(before.sessions);
+          setRecordings(before.recordings);
+          setStats(before.stats);
+          setGoals(before.goals);
+          setSettings(s => ({ ...s, ...before.plan }));
+          setStatusMessage('Restored');
+      } });
+  };
   const inSession = appState !== AppState.IDLE;
   const routineBlocks = activeRoutineOf(settings).blocks;
   const routineIsEmpty = routineBlocks.length === 0;
@@ -1007,9 +1068,9 @@ const App: React.FC = () => {
             goals={goals}
             stats={stats}
             onAdd={g => setGoals(p => [...p, g])}
-            onRemove={id => setGoals(p => p.filter(g => g.id !== id))}
+            onRemove={id => undoable('Goal removed', () => setGoals(p => p.filter(g => g.id !== id)))}
             onClaim={handleClaimGoal}
-            onRemoveHistory={handleDeleteHistoryEntry}
+            onRemoveHistory={id => undoable('Goal removed from history', () => handleDeleteHistoryEntry(id))}
           />
         </div>
       </div>
@@ -1028,15 +1089,15 @@ const App: React.FC = () => {
           syncDelete={settings.deleteSessionWithRecording}
           onUpdateNote={(id, note) => setSessions(prev => prev.map(s => s.id === id ? { ...s, notes: note.trim() || undefined } : s))}
           onSetMilestone={(id, milestone) => setSessions(prev => prev.map(s => s.id === id ? { ...s, milestone } : s))}
-          onDelete={handleDeleteSession}
-          onBulkDelete={handleBulkDeleteSessions}
-          onRemoveRecording={handleDeleteRecording}
+          onDelete={id => undoable('Session deleted', () => handleDeleteSession(id), [sessions.find(s => s.id === id)?.recordingId])}
+          onBulkDelete={ids => undoable(`${ids.length} ${ids.length === 1 ? 'session' : 'sessions'} deleted`, () => handleBulkDeleteSessions(ids), sessions.filter(s => ids.includes(s.id)).map(s => s.recordingId))}
+          onRemoveRecording={id => undoable('Recording removed', () => handleDeleteRecording(id), [id])}
         />
         {otherRecordings.length > 0 && (
           <div className="mt-10 max-w-[1000px]">
             <h3 className="text-[15px] font-semibold mb-1">Recordings without a session</h3>
             <p className="text-[13px] text-text-muted mb-3">Kept when their session was deleted.</p>
-            <OtherRecordings recordings={otherRecordings} onDelete={handleDeleteRecording} />
+            <OtherRecordings recordings={otherRecordings} onDelete={id => undoable('Recording deleted', () => handleDeleteRecording(id), [id])} />
           </div>
         )}
       </>
@@ -1069,6 +1130,7 @@ const App: React.FC = () => {
         onSetActive={pickForToday}
         onSelect={(id) => goRoutine(id)}
         onStart={(id) => { pickForToday(id); initiateSession('routine', id); }}
+        undoable={undoable}
       />
   );
   const newRoutineMenu = <NewRoutineMenu onCreate={(r) => { setSettings(s => ({ ...s, routines: [...s.routines, r] })); goRoutine(r.id); }} />;
@@ -1190,6 +1252,22 @@ const App: React.FC = () => {
           </AnimatePresence>
         </main>
 
+        {/* Undo after a delete: bottom centre of the content pane, gone after a few seconds */}
+        <div className="pointer-events-none absolute inset-x-0 bottom-5 z-20 flex justify-center">
+          <AnimatePresence>
+            {undo && (
+              <motion.div key={undo.at} role="status"
+                className="pointer-events-auto flex items-center gap-3 h-10 pl-4 pr-1.5 rounded-xl bg-surface border border-border shadow-pop text-[13px]"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0, transition: { duration: 0.2, ease: EASE_OUT } }}
+                exit={{ opacity: 0, transition: { duration: 0.16, ease: EASE_OUT } }}>
+                <span>{undo.label}</span>
+                <Button variant="ghost" size="sm" onClick={undo.restore}>Undo</Button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
         {/* Focus mode: the session takes the whole window below the title bar; nothing else competes */}
         <AnimatePresence>
           {inSession && (
@@ -1228,6 +1306,13 @@ const App: React.FC = () => {
         </AnimatePresence>
       </div>
 
+      <Modal isOpen={askClose} onClose={() => setAskClose(false)} title="End the session?">
+        <p className="text-[13.5px] text-text-muted">Resona is closing. What you’ve recorded so far is saved as a session.</p>
+        <div className="mt-5 flex justify-end gap-2">
+          <Button variant="ghost" onClick={() => setAskClose(false)}>Keep training</Button>
+          <Button onClick={endAndClose}>End and close</Button>
+        </div>
+      </Modal>
       <LevelProgressModal isOpen={showLevelModal} onClose={() => setShowLevelModal(false)} stats={stats} />
       <CommandMenu open={showCommands} onClose={() => setShowCommands(false)} commands={commands} search={searchSessions} />
     </div>

@@ -15,6 +15,7 @@ export const PROGRESS_PAGES = [
 export const SETTINGS_PAGES = [
   { id: 'appearance', label: 'Appearance' },
   { id: 'training', label: 'Training' },
+  { id: 'background', label: 'Background and reminders' },
   { id: 'microphone', label: 'Microphone' },
   { id: 'data', label: 'Progress and data' },
   { id: 'backup', label: 'Backup' },

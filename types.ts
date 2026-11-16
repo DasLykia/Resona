@@ -96,6 +96,10 @@ export interface AppSettings {
   todayOverride?: { date: string; routineId: string }; // "just today" pick from Today
   seenRecap?: string; // "2026-10": last month whose recap nudge was opened or dismissed on Today
   uiScale?: 'auto' | '1' | '1.15' | '1.3'; // interface size; auto picks from the window width
+  // Background (installed app only): start at login, stay in the tray when closed, daily training reminder
+  openAtLogin?: boolean;
+  keepInTray?: boolean;
+  reminder?: { on: boolean; time: string }; // "HH:MM", on days the week plan has a routine
 
   // First-launch setup and page hints
   setupDone?: boolean;

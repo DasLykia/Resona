@@ -22,6 +22,40 @@ const Group: React.FC<{ id?: string; title: string; children: React.ReactNode }>
   </section>
 );
 
+// Start with Windows, the tray and the reminder. All run in the main process, so the browser preview can't use them.
+const BackgroundGroup: React.FC<{ settings: AppSettings; update: (patch: Partial<AppSettings>) => void }> = ({ settings, update }) => {
+  const installed = !!window.resonaWindow?.setBackground;
+  const reminder = settings.reminder ?? { on: false, time: '18:00' };
+  const [trayNote, setTrayNote] = useState(false); // the reminder just turned the tray on
+  const off = installed ? undefined : 'Only works in the installed app.';
+  return (
+    <Group id="background" title="Background and reminders">
+      <Row label="Start with Windows" hint={off ?? (settings.keepInTray ? 'Starts hidden in the tray when you sign in.' : 'Opens Resona when you sign in. Turn on the tray below to start it hidden.')}>
+        {installed && <Switch label="Start with Windows" checked={!!settings.openAtLogin} onChange={v => update({ openAtLogin: v })} />}
+      </Row>
+      <Row label="Keep running in the tray when closed"
+        hint={off ?? (trayNote && settings.keepInTray ? 'Turned on so your reminder can reach you after you close the window.'
+          : !settings.keepInTray && reminder.on ? 'Your reminder is paused while this is off.'
+          : 'Closing the window leaves Resona in the tray, using little memory. Quit from the tray icon.')}>
+        {installed && <Switch label="Keep running in the tray when closed" checked={!!settings.keepInTray} onChange={v => { setTrayNote(false); update({ keepInTray: v }); }} />}
+      </Row>
+      <Row label="Training reminder" htmlFor="reminder-time"
+        hint={off ?? 'A notification on days your week plan has a routine. Skipped on rest days and once you’ve trained.'}>
+        {installed && reminder.on && (
+          <input id="reminder-time" type="time" value={reminder.time} aria-label="Reminder time"
+            onChange={e => e.target.value && update({ reminder: { ...reminder, time: e.target.value } })}
+            className="h-8 rounded-lg border border-border-strong bg-surface px-2.5 text-[13px] font-mono tabular-nums outline-none focus:border-primary transition-colors" />
+        )}
+        {installed && <Switch label="Training reminder" checked={reminder.on} onChange={on => {
+          // The reminder needs Resona running, so it brings the tray with it
+          if (on && !settings.keepInTray) setTrayNote(true);
+          update({ reminder: { ...reminder, on }, ...(on ? { keepInTray: true } : {}) });
+        }} />}
+      </Row>
+    </Group>
+  );
+};
+
 // One setting: what it is on the left, its control on the right
 const Row: React.FC<{ label: string; hint?: React.ReactNode; children: React.ReactNode; htmlFor?: string }> = ({ label, hint, children, htmlFor }) => (
   <div className="flex items-center justify-between gap-8 py-3.5 border-b border-border">
@@ -123,6 +157,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ settings, update, st
           <Switch label="Check the microphone before each session" checked={!settings.skipPreflight} onChange={v => update({ skipPreflight: !v })} />
         </Row>
       </Group>
+
+      <BackgroundGroup settings={settings} update={update} />
 
       <Group id="microphone" title="Microphone">
         <Row label="Input device" htmlFor="mic">

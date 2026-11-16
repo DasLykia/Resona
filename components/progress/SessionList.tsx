@@ -97,7 +97,7 @@ export const SessionList: React.FC<SessionListProps> = ({ sessions, range, title
               <Button variant="ghost" size="sm" onClick={() => setSelected(new Set(filtered.map(r => r.s.id)))}>Select all</Button>
               {selected.size > 0 && (
                 <ConfirmButton variant="danger" confirmLabel={`Delete ${selected.size}`}
-                  message={<>Delete <span className="font-mono tabular-nums">{selected.size}</span> session{selected.size === 1 ? '' : 's'}?{syncDelete ? ' Their recordings are deleted too.' : ''} This can’t be undone.</>}
+                  message={<>Delete <span className="font-mono tabular-nums">{selected.size}</span> session{selected.size === 1 ? '' : 's'}?{syncDelete ? ' Their recordings are deleted too.' : ''}</>}
                   onConfirm={() => { onBulkDelete([...selected]); stopSelecting(); }}>
                   Delete
                 </ConfirmButton>
@@ -222,13 +222,13 @@ const SessionDetail: React.FC<{
         <div className="flex items-center justify-between mt-2">
           <div className="flex gap-1">
             <ConfirmButton align="start" confirmLabel="Delete session"
-              message={<>Delete this session?{syncDelete && session.recordingId ? ' Its recording is deleted too.' : ''} This can’t be undone.</>}
+              message={<>Delete this session?{syncDelete && session.recordingId ? ' Its recording is deleted too.' : ''}</>}
               onConfirm={() => onDelete(session.id)}>
               Delete session
             </ConfirmButton>
             {session.recordingId && !syncDelete && (
               <ConfirmButton align="start" confirmLabel="Remove recording"
-                message="Remove the audio but keep this session’s log and pitch data? This can’t be undone."
+                message="Remove the audio but keep this session’s log and pitch data?"
                 onConfirm={() => onRemoveRecording(session.recordingId!)}>
                 Remove recording
               </ConfirmButton>

@@ -25,17 +25,18 @@ interface RoutinePageProps {
   onSetActive: (id: string) => void;
   onSelect: (id: string) => void;
   onStart: (id: string) => void;
+  undoable: (label: string, run: () => void) => void; // delete now, offer Undo for a few seconds
 }
 
 // One routine: its editor (duplicate and delete are handled here)
-export const RoutinePage: React.FC<RoutinePageProps> = ({ routine, routines, activeId, plan, onChange, onSetActive, onSelect, onStart }) => {
+export const RoutinePage: React.FC<RoutinePageProps> = ({ routine, routines, activeId, plan, onChange, onSetActive, onSelect, onStart, undoable }) => {
   const replace = (r: Routine) => onChange(routines.map(x => (x.id === r.id ? r : x)));
-  const remove = () => {
+  const remove = () => undoable(`Deleted “${routine.name}”`, () => {
     const rest = routines.filter(r => r.id !== routine.id);
     onChange(rest);
     if (routine.id === activeId) onSetActive(rest[0].id);
     onSelect(''); // back to the list
-  };
+  });
   const duplicate = () => {
     const c = copyRoutine(routine, `${routine.name} copy`, newId);
     onChange([...routines, c]);
@@ -53,6 +54,7 @@ export const RoutinePage: React.FC<RoutinePageProps> = ({ routine, routines, act
         onDuplicate={duplicate}
         onDelete={remove}
         onStart={() => onStart(routine.id)}
+        undoable={undoable}
       />
   );
 };

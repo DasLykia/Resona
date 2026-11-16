@@ -1,5 +1,5 @@
 import { VelopackApp, UpdateManager } from 'velopack';
-import { app, BrowserWindow, dialog, ipcMain, Menu, nativeTheme } from "electron";
+import { app, BrowserWindow, dialog, ipcMain, Menu, nativeTheme, Notification, Tray } from "electron";
 import fs from "fs/promises";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -16,6 +16,12 @@ const updateUrl = 'https://github.com/DasLykia/Resona/releases/latest/download';
 
 // Initialize the store
 const store = new Store();
+
+// One Resona at a time: starting it again (Start menu, login) brings the existing one up
+if (!app.requestSingleInstanceLock()) app.exit(0);
+app.on("second-instance", () => showWindow());
+// Matches the Velopack Start menu shortcut, so Windows shows our notifications under Resona
+app.setAppUserModelId("velopack.Resona");
 
 // Keep a global reference of the window object to send messages
 let win;
@@ -61,7 +67,15 @@ function createWindow() {
 
   win.on("resize", saveState);
   win.on("move", saveState);
-  win.on("close", saveState);
+  win.on("close", (e) => {
+    saveState();
+    // Mid-session: the page asks first, saves what was recorded, then calls app:close-now
+    if (busy && !win.isDestroyed()) {
+      e.preventDefault();
+      win.show();
+      win.webContents.send("app:close-requested");
+    }
+  });
   
   if (!app.isPackaged) {
     win.loadURL("http://localhost:5173");
@@ -139,18 +153,112 @@ ipcMain.handle("export:write", async (event, name, data) => {
   await fs.writeFile(target, Buffer.from(data));
 });
 
+// --- Background: tray, start with Windows, training reminder ---
+// Settings › Background. Kept in the store too, so a login start (no page loaded) knows them.
+// plan: routine name per weekday (getDay index, null = rest); skip: rest/time-off dates and today once trained.
+let bg = store.get("background", { openAtLogin: false, tray: false, reminder: { on: false, time: "18:00" }, plan: [], override: null, skip: [] });
+let tray = null;
+let quitting = false;
+let busy = false; // a session is running in the page
+let notice = null; // held so the click handler isn't garbage-collected
+
+function showWindow(go) {
+  // In the tray the page is unloaded; a fresh one opens on Today anyway
+  if (!win || win.isDestroyed()) return app.isReady() && createWindow();
+  if (win.isMinimized()) win.restore();
+  win.show();
+  win.focus();
+  if (go) win.webContents.send("app:go", go);
+}
+
+function applyTray() {
+  if (bg.tray && !tray) {
+    tray = new Tray(path.join(__dirname, "../build/icon.ico"));
+    tray.setToolTip("Resona");
+    tray.setContextMenu(Menu.buildFromTemplate([
+      { label: "Open Resona", click: () => showWindow() },
+      { type: "separator" },
+      { label: "Quit Resona", click: () => { quitting = true; app.quit(); } },
+    ]));
+    tray.on("click", () => showWindow());
+  } else if (!bg.tray && tray) {
+    tray.destroy();
+    tray = null;
+  }
+}
+
+function applyLogin() {
+  if (!app.isPackaged) return; // dev runs would register electron.exe
+  // Velopack keeps the exe at ...\Resona\current\Resona.exe, so this path survives updates
+  app.setLoginItemSettings({ openAtLogin: !!bg.openAtLogin, args: ["--hidden"] });
+}
+
+const dayKey = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+const reminderTime = (d) => { const [h, m] = bg.reminder.time.split(":").map(Number); const t = new Date(d); t.setHours(h, m, 0, 0); return t; };
+
+function checkReminder() {
+  const now = new Date();
+  const today = dayKey(now);
+  if (!bg.reminder?.on || now < reminderTime(now) || store.get("lastReminded") === today) return;
+  const name = bg.override?.date === today ? bg.override.name : bg.plan[now.getDay()];
+  if (!name || bg.skip.includes(today) || !Notification.isSupported()) return;
+  store.set("lastReminded", today);
+  notice = new Notification({ title: "Time to train", body: `${name} is planned for today.`, icon: path.join(__dirname, "../build/icon.ico") });
+  notice.on("click", () => showWindow({ section: "today" }));
+  notice.show();
+}
+
+const isDay = (v) => typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v);
+const isName = (v) => typeof v === "string" && v.length <= 200;
+ipcMain.on("app:set-background", (event, c) => {
+  if (!c || typeof c !== "object") return;
+  const time = typeof c.reminder?.time === "string" && /^([01]\d|2[0-3]):[0-5]\d$/.test(c.reminder.time) ? c.reminder.time : "18:00";
+  const next = {
+    openAtLogin: c.openAtLogin === true,
+    tray: c.tray === true,
+    reminder: { on: c.reminder?.on === true, time },
+    plan: Array.isArray(c.plan) ? c.plan.slice(0, 7).map((n) => (isName(n) ? n : null)) : [],
+    override: c.override && isDay(c.override.date) && isName(c.override.name) ? { date: c.override.date, name: c.override.name } : null,
+    skip: Array.isArray(c.skip) ? c.skip.filter(isDay).slice(0, 400) : [],
+  };
+  // Turning the reminder on (or moving it) after today's time has passed waits for tomorrow instead of firing at once
+  if (next.reminder.on && (!bg.reminder?.on || bg.reminder.time !== time) && new Date() >= reminderTime(new Date())) {
+    store.set("lastReminded", dayKey(new Date()));
+  }
+  const loginChanged = next.openAtLogin !== bg.openAtLogin;
+  bg = next;
+  store.set("background", bg);
+  applyTray();
+  if (loginChanged) applyLogin();
+});
+
+ipcMain.on("app:set-busy", (event, value) => { busy = value === true; });
+ipcMain.on("app:close-now", () => {
+  busy = false;
+  if (win && !win.isDestroyed()) win.close();
+});
+
 // --- Other IPC Handlers ---
 ipcMain.on('clear-app-data', () => {
   store.clear();
 });
 
 // --- App Events ---
-app.whenReady().then(createWindow);
+app.whenReady().then(() => {
+  applyTray();
+  applyLogin();
+  setInterval(checkReminder, 30_000);
+  // A login start stays in the tray; without the tray there'd be no way to reach it, so open the window
+  if (!(process.argv.includes("--hidden") && bg.tray)) createWindow();
+});
+
+app.on("before-quit", () => { quitting = true; });
 
 app.on("activate", () => {
   if (BrowserWindow.getAllWindows().length === 0) createWindow();
 });
 
+// With the tray on, closing the window unloads the page and Resona keeps running small
 app.on("window-all-closed", () => {
-  if (process.platform !== "darwin") app.quit();
+  if (quitting || !bg.tray) app.quit();
 });

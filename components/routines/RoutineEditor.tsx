@@ -20,9 +20,10 @@ interface RoutineEditorProps {
   onDuplicate: () => void;
   onDelete: () => void;
   onStart: () => void;
+  undoable: (label: string, run: () => void) => void;
 }
 
-export const RoutineEditor: React.FC<RoutineEditorProps> = ({ routine, isActive, days, canDelete, onChange, onUseOnToday, onDuplicate, onDelete, onStart }) => {
+export const RoutineEditor: React.FC<RoutineEditorProps> = ({ routine, isActive, days, canDelete, onChange, onUseOnToday, onDuplicate, onDelete, onStart, undoable }) => {
   // One exercise open for editing at a time; the rest are one-line rows so a routine fits on screen
   const [openId, setOpenId] = useState<string | null>(null);
   const total = routine.blocks.reduce((a, b) => a + b.duration, 0);
@@ -61,7 +62,7 @@ export const RoutineEditor: React.FC<RoutineEditorProps> = ({ routine, isActive,
           <Button variant="ghost" size="sm" onClick={onDuplicate}>Duplicate</Button>
           {routine.blocks.length > 0 && <Button variant="secondary" size="sm" onClick={onStart} className="ml-1">Start this routine</Button>}
           {canDelete && (
-            <ConfirmButton confirmLabel="Delete routine" message={`Delete “${routine.name}”? Past sessions keep their logs. This can’t be undone.`} onConfirm={onDelete}>
+            <ConfirmButton confirmLabel="Delete routine" message={`Delete “${routine.name}”? Past sessions keep their logs.`} onConfirm={onDelete}>
               Delete
             </ConfirmButton>
           )}
@@ -75,7 +76,7 @@ export const RoutineEditor: React.FC<RoutineEditorProps> = ({ routine, isActive,
       <Reorder.Group axis="y" values={routine.blocks} onReorder={setBlocks} as="ol">
         {routine.blocks.map((b, i) => (
           <BlockRow key={b.id} block={b} index={i} expanded={openId === b.id} onToggle={() => setOpenId(o => (o === b.id ? null : b.id))} onChange={patch => updateBlock(b.id, patch)} onMove={dir => move(i, dir)}
-            onRemove={() => setBlocks(routine.blocks.filter(x => x.id !== b.id))} />
+            onRemove={() => undoable(`Removed “${b.title || 'exercise'}”`, () => setBlocks(routine.blocks.filter(x => x.id !== b.id)))} />
         ))}
       </Reorder.Group>
 

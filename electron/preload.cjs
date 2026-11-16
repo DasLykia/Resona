@@ -11,6 +11,12 @@ contextBridge.exposeInMainWorld("velopackApi", {
 contextBridge.exposeInMainWorld("resonaWindow", {
     setTheme: (source) => ipcRenderer.send("window:set-theme", source),
     setZoom: (factor) => ipcRenderer.send("window:set-zoom", factor),
+    setBackground: (config) => ipcRenderer.send("app:set-background", config),
+    setBusy: (busy) => ipcRenderer.send("app:set-busy", busy),
+    closeNow: () => ipcRenderer.send("app:close-now"),
+    // Each returns an unsubscribe for React effects
+    onCloseRequested: (cb) => { const h = () => cb(); ipcRenderer.on("app:close-requested", h); return () => ipcRenderer.off("app:close-requested", h); },
+    onGo: (cb) => { const h = (e, to) => cb(to); ipcRenderer.on("app:go", h); return () => ipcRenderer.off("app:go", h); },
 });
 
 contextBridge.exposeInMainWorld("resonaFiles", {

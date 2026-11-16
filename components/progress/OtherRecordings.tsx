@@ -22,7 +22,7 @@ export const OtherRecordings: React.FC<{ recordings: Recording[]; onDelete: (id:
             </span>
             <Button variant="ghost" size="sm" onClick={() => setOpenId(openId === r.id ? null : r.id)}>{openId === r.id ? 'Close' : 'Play'}</Button>
             <ExportButton recordingId={r.id} name={exportName(r.date, 'Recording')} />
-            <ConfirmButton confirmLabel="Delete" message="Delete this recording? This can’t be undone." onConfirm={() => onDelete(r.id)}>Delete</ConfirmButton>
+            <ConfirmButton confirmLabel="Delete" message="Delete this recording?" onConfirm={() => onDelete(r.id)}>Delete</ConfirmButton>
           </div>
           {openId === r.id && <div className="mt-3"><StoredRecording id={r.id} fallbackLength={r.duration} /></div>}
         </li>
